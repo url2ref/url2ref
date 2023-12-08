@@ -2,6 +2,12 @@
 name = "url2ref"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.76.0"
+authors = ["The url2ref developers"]
+license = "GPLv3"
+readme = "README.md"
+repository = "https://github.com/url2ref/url2ref"
+keywords = ["semantic web", "reference generation"]
 description = "Generate a reference from a web address"
 default-run = "rocket_app"
 

@@ -1,6 +1,6 @@
 {
   "name": "url2ref",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Generate a reference from a web address",
   "repository": {
     "type": "git",
