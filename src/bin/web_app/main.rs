@@ -1,13 +1,11 @@
 mod scss;
+use scss::compile;
 
 use rocket::fs::FileServer;
 use rocket::response::Redirect;
 use rocket::{self, catch, catchers, get, launch, routes, uri};
 use rocket_dyn_templates::Template;
-
 use tera::Context;
-
-use scss::compile;
 
 #[catch(404)]
 fn not_found() -> Redirect {
