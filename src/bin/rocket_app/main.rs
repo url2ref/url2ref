@@ -4,10 +4,16 @@ extern crate grass;
 extern crate tera;
 
 use rocket::fs::FileServer;
+use rocket::response::Redirect;
 use rocket_dyn_templates::Template;
 use std::fs::File;
 use std::io::Write;
 use tera::Context;
+
+#[catch(404)]
+fn not_found() -> Redirect {
+    Redirect::to(uri!(home))
+}
 
 #[get("/")]
 fn home() -> Template {
@@ -35,4 +41,5 @@ fn rocket() -> _ {
         .mount("/", routes![home])
         .mount("/static", FileServer::from("./static"))
         .attach(Template::fairing())
+        .register("/", catchers![not_found])
 }
