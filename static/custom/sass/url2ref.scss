@@ -1,0 +1,103 @@
+$color-mode-type: data;
+
+@import "../../scss/bootstrap.scss";
+@import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css");
+
+body {
+    min-height:100vh;
+}
+
+.flex-fill {
+    flex:1 1 auto;
+}
+
+.main-search {
+    padding-top: 25vh;
+}
+
+.logo {
+    width:200px;
+    height:80px;
+}
+  
+@keyframes slide-url {
+    0% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(140%);
+    }
+    50% {
+      transform: translateX(140%);
+    }
+    75% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(0);
+    }
+}
+
+@keyframes slide-ref {
+    0% {
+      transform: translateX(-140%);
+    }
+    25% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(0);
+    }
+    75% {
+      transform: translateX(-140%);
+    }
+    100% {
+      transform: translateX(-140%);
+    }
+}
+
+@include color-mode(dark) {
+  .logo-url, .logo-ref, .logo-box {
+      fill: #fff;
+  }
+
+  .logo-2 {
+      font-size: 20px;
+      fill: rgb(33,37,41);
+  }
+  
+  .custom-tooltip {
+    --bs-tooltip-bg: rgb(255, 255, 255);
+  }
+  
+}
+
+@include color-mode(light) {
+  .logo-url, .logo-ref, .logo-box {
+      fill: rgb(33,37,41);
+  }
+
+  .logo-2 {
+      font-size: 20px;
+      fill: #fff;
+  }
+
+  .custom-tooltip {
+    --bs-tooltip-bg: #444444;
+    --bs-tooltip-color: #ffffff;
+  }
+}
+
+.logo-url {
+  font-size: 20px;
+  animation: slide-url 6s linear infinite;
+  animation-timing-function: ease-in-out;
+  transition: opacity 1s ease-in-out;
+}
+
+.logo-ref {
+  font-size: 20px;
+  animation: slide-ref 6s linear infinite;
+  animation-timing-function: ease-in-out;
+  transition: opacity 1s ease-in-out;
+}

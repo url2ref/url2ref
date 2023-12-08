@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8">
+    <!-- OpenGraph -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://url2ref.onrender.com/">
+    <meta property="og:title" content="url2ref">
+    <meta property="og:description" content="Application for creating a reference given a web address">
+    <meta property="og:image" content="/static/custom/favicon.ico">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Application for creating a reference given a web address">
+    <meta name="keywords" content="reference generator, url2ref">
+
+    <title>url2ref</title>
+    <link rel="shortcut icon" href="/static/custom/favicon.ico">
+
+    <link rel=stylesheet type=text/css href="/static/css/url2ref.css">
+  </head>
+
+  <body class="d-flex flex-column h-100">
+    <header class="text-center mt-3">
+      <svg class="bi" width="20" height="20" type="button" fill="currentColor" id="bd-theme" alt="Toggle theme" aria-label="Toggle theme (dark)">
+        <use xlink:href="/static/icons/circle-half.svg"/>
+      </svg>
+    </header>
+
+    <!-- Container -->
+    <main class="flex-shrink-0">
+      <div class="container">
+        <div class="main-search">
+          <div class="logo-container d-flex justify-content-center">
+            <div class="logo d-flex flex-row justify-content-center">
+              <svg class="logo-part" viewBox="0 0 35 40">
+                <text class="logo-url" x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">url</text>
+              </svg>
+              <svg class="logo-part" viewBox="0 0 20 40">
+                <rect class="logo-box" x="0" y="14%" dominant-baseline="middle" width="20" height="25"></rect>
+                <text class="logo-2" x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">2</text>
+              </svg>
+              <svg class="logo-part" viewBox="0 0 35 40">
+                <text class="logo-ref" x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">ref</text>
+              </svg>
+            </div>
+          </div>
+          {% block content %}{% endblock %}
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer mt-auto py-3">
+      <div class="container d-flex justify-content-center">
+        <span class="text-muted">A <a href="https://github.com/url2ref/url2ref">project</a> by the url2ref developers (2023)</span>
+      </div>
+    </footer>
+  </body>
+
+  <script defer src="/static/js/bootstrap.min.js"></script>
+  <script defer src="/static/popper/popper.min.js"></script>
+  <script defer src="/static/custom/custom.js"></script>
+</html>

@@ -1,0 +1,7 @@
+{% extends "layout" %}
+
+{% block content %}
+<div class="pb-4">
+  <p>Hello, world!</p>
+</div>
+{% endblock content %}

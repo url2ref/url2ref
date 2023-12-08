@@ -1,0 +1,3 @@
+[default]
+sass_dir = "static/custom/sass"
+css_dir = "static/custom/css"
