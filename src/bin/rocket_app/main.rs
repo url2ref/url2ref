@@ -3,6 +3,8 @@ extern crate rocket;
 extern crate grass;
 extern crate tera;
 
+use std::env;
+
 use rocket::fs::FileServer;
 use rocket::response::Redirect;
 use rocket_dyn_templates::Template;
@@ -23,10 +25,8 @@ fn home() -> Template {
 
 // No native support for SCSS in Rocket
 fn compile_scss() {
-    // TODO: Centralize paths in .env file
-    // and load from it within the Tera templates as well
-    let css_path = "./static/css/url2ref.css";
-    let scss_path = "./static/custom/sass/url2ref.scss";
+    let css_path = env::var("MAIN_CSS_PATH").expect("Could not retrieve MAIN_CSS_PATH env. variable");
+    let scss_path = env::var("MAIN_SCSS_PATH").expect("Could not retrieve MAIN_SCSS_PATH env. variable");
     let mut output_file = File::create(css_path).expect("Problem creating file object");
     let css = grass::from_path(scss_path, &grass::Options::default())
         .expect("Problem opening the file");

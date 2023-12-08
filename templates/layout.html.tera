@@ -16,7 +16,7 @@
     <title>url2ref</title>
     <link rel="shortcut icon" href="/static/custom/favicon.ico">
 
-    <link rel=stylesheet type=text/css href="/static/css/url2ref.css">
+    <link rel=stylesheet type=text/css href={{ get_env(name="MAIN_CSS_PATH") }}>
   </head>
 
   <body class="d-flex flex-column h-100">
