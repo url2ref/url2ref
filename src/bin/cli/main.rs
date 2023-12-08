@@ -1,3 +1,5 @@
+use url2ref::test;
+
 fn main() {
-    println!("Hello!");
+    test()
 }
