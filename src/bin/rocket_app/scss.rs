@@ -24,8 +24,8 @@ pub enum CompilationError {
 pub fn compile(scss_path_key: &str, css_path_key: &str) -> Result<(), CompilationError> {
     use CompilationError::{FileCreateError, FileWriteError};
 
-    let css_path = env::var(scss_path_key)?;
-    let scss_path = env::var(css_path_key)?;
+    let css_path = env::var(css_path_key)?;
+    let scss_path = env::var(scss_path_key)?;
     let mut output_file = File::create(css_path)
             .map_err(FileCreateError)?;
 
