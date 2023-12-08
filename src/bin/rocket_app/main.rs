@@ -25,7 +25,7 @@ fn home() -> Template {
 #[launch]
 fn rocket() -> _ {
     let _compile_result = {
-        match compile("MAIN_SCSS_PATHS", "MAIN_CSS_PATH") {
+        match compile("MAIN_SCSS_PATH", "MAIN_CSS_PATH") {
             Ok(()) => (),
             Err(error) => panic!("SCSS compilation failed: {}", error),
         }
