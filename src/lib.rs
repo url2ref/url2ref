@@ -24,7 +24,3 @@ pub fn generate_reference(url: &str) -> Result<String, ReferenceGenerationError>
     let reference = parsed_html.title.unwrap_or(String::from(""));
     Ok(reference)
 }
-
-pub fn test() {
-    println!("I'm from a library!")
-}
