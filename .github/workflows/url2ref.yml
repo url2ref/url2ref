@@ -8,14 +8,18 @@ env:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust: [nightly]
 
     steps:
     - uses: actions/checkout@v3
     - name: Setting up Rust toolchain
       uses: hecrj/setup-rust-action@v2.0.0
       with:
-        rust-version: nightly
+        rust-version: ${{ matrix.rust }}
     - name: Install npm dependencies
       working-directory: ./npm
       run: |
