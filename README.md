@@ -1,6 +1,6 @@
 # url2ref &ndash; generate a reference from a web address
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) ![build](https://img.shields.io/github/actions/workflow/status/url2ref/url2ref/build_and_test.yml)
 
 ## Motivation
 
