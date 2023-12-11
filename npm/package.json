@@ -6,16 +6,6 @@
     "type": "git",
     "url": "https://github.com/url2ref/url2ref"
   },
-  "scripts": {
-    "build:mkdir": "mkdir -p ../static/css/ && mkdir ../static/popper/ && mkdir ../static/js/ && mkdir ../static/scss/ && mkdir ../static/icons/",
-    "build:bootstrap": "cp node_modules/bootstrap/dist/css/* ../static/css/",
-    "build:popper": "cp node_modules/@popperjs/core/dist/umd/popper.*js ../static/popper && cp node_modules/@popperjs/core/dist/umd/popper.*map ../static/popper",
-    "build:bootstrap-js": "cp node_modules/bootstrap/dist/js/* ../static/js",
-    "build:bootstrap-scss": "cp -r node_modules/bootstrap/scss/* ../static/scss",
-    "build:bootstrap-icons": "cp node_modules/bootstrap-icons/icons/* ../static/icons",
-    "build": "npm install && npm run build:mkdir && npm run build:popper && npm run build:bootstrap-js && npm run build:bootstrap-scss && npm run build:bootstrap && npm run build:bootstrap-icons",
-    "clean": "rm -Rv ./node_modules/ ../static/popper/ ../static/css/ ../static/js/ ../static/scss/ ../static/icons/ || true"
-  },
   "keywords": [
     "semantic web",
     "reference generation"

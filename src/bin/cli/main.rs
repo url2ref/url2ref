@@ -1,11 +1,22 @@
-use std::env;
+use clap::Parser;
 
 use url2ref::*;
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    let query = &args[1];
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct CommandLineArgs {
+    #[arg(short, long)]
+    url: String,
 
-    let reference = generate(query, url2ref::GenerationOptions::default()).unwrap();
+    #[arg(short, long)]
+    ref_type: Option<String>,
+}
+
+
+fn main() {
+    let args = CommandLineArgs::parse();
+    let query = args.url;
+
+    let reference = generate(&query, url2ref::GenerationOptions::default()).unwrap();
     println!("{}", reference.wiki())
 }
