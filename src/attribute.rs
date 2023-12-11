@@ -10,6 +10,7 @@ pub enum InternalAttributeKey {
    Locale,
    Site,
    Date,
+   Url,
    Type
 }
 
@@ -25,6 +26,7 @@ pub mod opengraph {
             InternalAttributeKey::Author => &[AttributeKey{key: "article:author"}],
             InternalAttributeKey::Locale => &[AttributeKey{key: "locale"}],
             InternalAttributeKey::Site   => &[AttributeKey{key: "site_name"}],
+            InternalAttributeKey::Url    => &[AttributeKey{key: "url"}],
             InternalAttributeKey::Date   => &[AttributeKey{key: "article:published_time"}, 
                                               AttributeKey{key: "article:modified_time"}],
             InternalAttributeKey::Type   => &[AttributeKey{key: "type"}],

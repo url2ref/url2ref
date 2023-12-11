@@ -1,8 +1,9 @@
 //! Generator responsible for producing a [`Reference`]
 
+use chrono::{NaiveDate, DateTime};
 use thiserror::Error;
 
-use crate::attribute::AttributeConfigList;
+use crate::attribute::{AttributeConfigList, Attribute, InternalAttributeKey};
 use crate::parser::{AttributeCollection, parse_html};
 use crate::reference::Reference;
 use crate::GenerationOptions;
@@ -15,38 +16,6 @@ pub enum ReferenceGenerationError {
     URLParseError(#[from] std::io::Error),
 }
 
-/// Create [`Reference`] by combining the extracted Open Graph and
-/// Schema.org metadata.
-/// TODO: Add support for prioritization
-/// such that certain Open Graph or Schema.org values
-/// can be prioritized over the other, allowing for flexibility
-/// and giving the user options (also as a way to decide tie breaks).
-
-
-fn form_reference(url: &str, recipes: Vec<AttributeConfigList>) -> Reference {
-    // Title
-    // look up in config: any prios?
-    //      -> OpenGraph, Schema ...
-    // is there OpenGraph in results?
-    // if yes, get hashmap from OpenGraph struct
-    // lookup title in the hashmap
-    // else try next priority
-    // ...
-    // if no values, then empty / None
-
-    let mut attribute_collection = AttributeCollection::new();
-    let html = parse_html(url).unwrap();
-    
-    for attribute_config_list in recipes.iter() {
-        attribute_collection = attribute_collection.build(attribute_config_list, &html);
-    }
-
-    println!("Title: {:?}", attribute_collection.get(crate::attribute::InternalAttributeKey::Title).unwrap().value);
-    println!("Author: {:?}", attribute_collection.get(crate::attribute::InternalAttributeKey::Author).unwrap().value);
-    todo!()
-}
-
-/*
 fn parse_date(date_string: Option<String>) -> Option<NaiveDate> {
     // TODO: make this more clean (one liner?)
 
@@ -60,7 +29,43 @@ fn parse_date(date_string: Option<String>) -> Option<NaiveDate> {
         None => None
     }
 }
-*/
+
+fn value_from_attribute(attribute_option: Option<&Attribute>) -> Option<String> {
+    match attribute_option {
+        Some(attribute) => Some(attribute.value.clone()),
+        None => None
+    }
+}
+
+/// Create [`Reference`] by combining the extracted Open Graph and
+/// Schema.org metadata.
+fn form_reference(url: &str, recipes: Vec<AttributeConfigList>) -> Result<Reference, ReferenceGenerationError> {
+    let mut attribute_collection = AttributeCollection::new();
+    let html = parse_html(url)?;
+    
+    for attribute_config_list in recipes.iter() {
+        attribute_collection = attribute_collection.build(attribute_config_list, &html);
+    }
+    
+    let title = attribute_collection.get(InternalAttributeKey::Title);
+    let author = attribute_collection.get(InternalAttributeKey::Author);
+    let date = attribute_collection.get(InternalAttributeKey::Date);
+    let language = attribute_collection.get(InternalAttributeKey::Locale);
+    let site = attribute_collection.get(InternalAttributeKey::Site);
+    let url_attrib = attribute_collection.get(InternalAttributeKey::Url);
+
+    let reference = Reference::NewsArticle { 
+        title: value_from_attribute(title),
+        author: value_from_attribute(author),
+        date: parse_date(value_from_attribute(date)),
+        language: value_from_attribute(language),
+        url: value_from_attribute(url_attrib),
+        site: value_from_attribute(site),
+    };
+    
+    println!("{:?}", reference);
+    Ok(reference)
+}
 
 /// Generate a [`Reference`] from a URL string.
 pub fn generate(
@@ -70,5 +75,5 @@ pub fn generate(
     // Parse the HTML to gain access to Schema.org and Open Graph metadata
     let reference = form_reference(url, options.recipes);
 
-    Ok(reference)
+    reference
 }

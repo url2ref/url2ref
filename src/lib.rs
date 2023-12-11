@@ -37,6 +37,7 @@ impl Default for GenerationOptions {
                     AttributeConfig { internal_key: InternalAttributeKey::Author, priority: 1},
                     AttributeConfig { internal_key: InternalAttributeKey::Locale, priority: 1},
                     AttributeConfig { internal_key: InternalAttributeKey::Site, priority: 1},
+                    AttributeConfig { internal_key: InternalAttributeKey::Url, priority: 1},
                     AttributeConfig { internal_key: InternalAttributeKey::Date, priority: 1},
                     AttributeConfig { internal_key: InternalAttributeKey::Type, priority: 1},
                 ],
