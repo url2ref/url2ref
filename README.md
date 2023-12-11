@@ -18,7 +18,7 @@ Thoroughly citing a web resource can be a tedious process. This application aims
 To build and run the CLI application, execute
 
 ```console
-cargo run --bin url2ref-cli <URL>
+cargo run --bin url2ref-cli -- --url <URL>
 ```
 
 where URL points to a web resource.
