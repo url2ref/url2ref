@@ -51,6 +51,10 @@ cargo doc --no-deps
 
 from the project root.
 
+## Contributing
+
+See [``CONTRIBUTING.md``](CONTRIBUTING.md).
+
 ## License
 
 The code in this project is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0).
