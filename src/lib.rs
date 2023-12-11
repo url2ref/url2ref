@@ -1,26 +1,27 @@
-use thiserror::Error;
 
-mod parsing {
-    use webpage::{Webpage, WebpageOptions, HTML};
+pub mod generator;
+use generator::ReferenceGenerationError;
+mod reference;
+pub use reference::*;
+mod parser;
+use parser::AttributeExtractor;
 
-    pub fn parse_html(url: &str) -> Result<HTML, std::io::Error>  {
-        let page = Webpage::from_url(url, WebpageOptions::default())?;
-        let parsed_html = page.html;
-        Ok(parsed_html)
+pub struct GenerationOptions {
+    extractors: Vec<AttributeExtractor>,
+    // translate_title: bool,
+    // include_archived: bool,
+    // user_language: &str,
+    // ...
+}
+impl Default for GenerationOptions {
+    fn default() -> Self {
+        Self {
+            extractors: vec![AttributeExtractor::OpenGraphExtractor, 
+                             AttributeExtractor::SchemaOrgExtractor],
+        }
     }
 }
 
-#[derive(Error, Debug)]
-pub enum ReferenceGenerationError {
-    #[error("URL failed to parse")]
-    URLParseError(#[from] std::io::Error),
-}
-
-pub fn generate_reference(url: &str) -> Result<String, ReferenceGenerationError> {
-    // Parse the HTML to gain access Schema.org and Open Graph metadata
-    let parsed_html = parsing::parse_html(url)?;
-
-    // TODO: Build upon this trivial example
-    let reference = parsed_html.title.unwrap_or(String::from(""));
-    Ok(reference)
+pub fn generate(url: &str, options: GenerationOptions) -> Result<Reference, ReferenceGenerationError> {
+    generator::generate(url, options)
 }

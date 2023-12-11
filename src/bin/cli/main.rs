@@ -1,15 +1,11 @@
 use std::env;
 
-use url2ref::generate_reference;
+use url2ref::*;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     let query = &args[1];
 
-    let reference_result = generate_reference(query);
-    let reference = match reference_result {
-        Ok(res) => res,
-        Err(error) => panic!("Reference generation failed: {}", error),
-    };
-    println!("{}", reference)
+    let reference = generate(query, url2ref::GenerationOptions::default()).unwrap();
+    println!("{}", reference.wiki())
 }
