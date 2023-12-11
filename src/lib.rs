@@ -14,15 +14,16 @@
 //! [BibTeX]: https://www.bibtex.org/
 //! [MediaWiki]: https://www.mediawiki.org/wiki/Help:Cite
 
+pub mod attribute;
 pub mod generator;
+use attribute::{AttributeConfigList, AttributeConfig, MetaDataType, InternalAttributeKey};
 use generator::ReferenceGenerationError;
 mod reference;
 pub use reference::*;
 mod parser;
-use parser::AttributeExtractor;
 
 pub struct GenerationOptions {
-    extractors: Vec<AttributeExtractor>,
+    recipes: Vec<AttributeConfigList>,
     // translate_title: bool,
     // include_archived: bool,
     // user_language: &str,
@@ -30,9 +31,20 @@ pub struct GenerationOptions {
 }
 impl Default for GenerationOptions {
     fn default() -> Self {
+        let og = AttributeConfigList {
+                list: vec![
+                    AttributeConfig { internal_key: InternalAttributeKey::Title, priority: 1},
+                    AttributeConfig { internal_key: InternalAttributeKey::Author, priority: 1},
+                    AttributeConfig { internal_key: InternalAttributeKey::Locale, priority: 1},
+                    AttributeConfig { internal_key: InternalAttributeKey::Site, priority: 1},
+                    AttributeConfig { internal_key: InternalAttributeKey::Date, priority: 1},
+                    AttributeConfig { internal_key: InternalAttributeKey::Type, priority: 1},
+                ],
+                meta_data_type: MetaDataType::OpenGraph
+        };
+
         Self {
-            extractors: vec![AttributeExtractor::OpenGraphExtractor, 
-                             AttributeExtractor::SchemaOrgExtractor],
+            recipes: vec![og],
         }
     }
 }
