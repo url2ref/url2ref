@@ -129,4 +129,20 @@ mod citation {
             format!("{} }}}}", self.formatted_string)
         }
     }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn wiki_citation_try_add() {
+            let prefix = "title";
+            let title = "Test title";
+
+            let wiki_citation = WikiCitation::new().try_add(prefix, &Some(title)).build();
+            let expected_result = format!("{{{{cite web |{prefix}={title} }}}}");
+
+            assert_eq!(wiki_citation, expected_result)
+        }
+    }
 }
