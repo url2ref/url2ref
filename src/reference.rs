@@ -36,6 +36,7 @@ pub enum Reference {
     }
 }
 
+
 impl Reference {
     pub fn bibtex(&self) -> String {
         // Match on self...
@@ -47,37 +48,37 @@ impl Reference {
             Reference::NewsArticle {title, author, date,
                 language, site, url}=> {
                 let formatted_string = WikiCitation::new()
-                    .try_add("title", title)
-                    .try_add("author", author)
-                    .try_add("date", date)
-                    .try_add("language", language)
-                    .try_add("site", site)
-                    .try_add("url", url)
+                    .try_add(ReferenceField::Title, title)
+                    .try_add(ReferenceField::Author, author)
+                    .try_add(ReferenceField::Date, date)
+                    .try_add(ReferenceField::Language, language)
+                    .try_add(ReferenceField::Site, site)
+                    .try_add(ReferenceField::Url, url)
                     .build();
                 formatted_string
             }
             Reference::ScholarlyArticle {title, author, date,
                 language, url, journal, publisher} => {
                 let formatted_string = WikiCitation::new()
-                    .try_add("title", title)
-                    .try_add("author", author)
-                    .try_add("date", date)
-                    .try_add("language", language)
-                    .try_add("url", url)
-                    .try_add("journal", journal)
-                    .try_add("publisher", publisher)
+                    .try_add(ReferenceField::Title, title)
+                    .try_add(ReferenceField::Author, author)
+                    .try_add(ReferenceField::Date, date)
+                    .try_add(ReferenceField::Language, language)
+                    .try_add(ReferenceField::Url, url)
+                    .try_add(ReferenceField::Journal, journal)
+                    .try_add(ReferenceField::Publisher, publisher)
                     .build();
                 formatted_string
             }
             Reference::GenericReference {title, author, date,
                 language, site, url} => {
                 let formatted_string = WikiCitation::new()
-                    .try_add("title", title)
-                    .try_add("author", author)
-                    .try_add("date", date)
-                    .try_add("language", language)
-                    .try_add("site", site)
-                    .try_add("url", url)
+                    .try_add(ReferenceField::Title, title)
+                    .try_add(ReferenceField::Author, author)
+                    .try_add(ReferenceField::Date, date)
+                    .try_add(ReferenceField::Language, language)
+                    .try_add(ReferenceField::Site, site)
+                    .try_add(ReferenceField::Url, url)
                     .build();
                 formatted_string
             }
@@ -95,10 +96,21 @@ impl Reference {
 mod citation {
     use std::fmt::Display;
 
+    pub enum ReferenceField {
+        Title,
+        Author,
+        Date,
+        Language,
+        Site,
+        Url,
+        Journal,
+        Publisher
+    }
+
     pub trait CitationBuilder {
         fn new() -> Self;
-        fn try_add<T: Display>(self, prefix: &str, value: &Option<T>) -> Self;
-        fn add(self, prefix: &str, value: &str) -> Self;
+        fn try_add<T: Display>(self, prefix: ReferenceField, value: &Option<T>) -> Self;
+        fn add(self, prefix: ReferenceField, value: &str) -> Self;
         fn build(self) -> String;
     }
 
@@ -113,15 +125,26 @@ mod citation {
             WikiCitation { formatted_string: String::from("{{cite web") }
         }
 
-        fn try_add<T: Display>(self, prefix: &str, value: &Option<T>) -> Self {
+        fn try_add<T: Display>(self, prefix: ReferenceField, value: &Option<T>) -> Self {
             match value {
                 Some(value) => self.add(prefix, &value.to_string()),
                 None => self,
             }
         }
 
-        fn add(mut self, prefix: &str, value: &str) -> Self {
-            self.formatted_string.push_str(&format!(" |{}={}", prefix, value));
+        fn add(mut self, prefix: ReferenceField, value: &str) -> Self {
+            let internal_prefix = match prefix {
+                ReferenceField::Title => "title",
+                ReferenceField::Author => "author",
+                ReferenceField::Date => "date",
+                ReferenceField::Language => "language",
+                ReferenceField::Site => "site",
+                ReferenceField::Url => "url",
+                ReferenceField::Journal => "journal",
+                ReferenceField::Publisher => "publisher"
+            };
+            
+            self.formatted_string.push_str(&format!(" |{}={}", internal_prefix, value));
             self
         }
 
@@ -136,11 +159,12 @@ mod citation {
 
         #[test]
         fn wiki_citation_try_add() {
-            let prefix = "title";
+            let prefix = ReferenceField::Title;
+            let prefix_str = "title";
             let title = "Test title";
 
             let wiki_citation = WikiCitation::new().try_add(prefix, &Some(title)).build();
-            let expected_result = format!("{{{{cite web |{prefix}={title} }}}}");
+            let expected_result = format!("{{{{cite web |{prefix_str}={title} }}}}");
 
             assert_eq!(wiki_citation, expected_result)
         }
