@@ -110,7 +110,7 @@ mod citation {
     }
     impl CitationBuilder for WikiCitation {
         fn new() -> Self {
-            WikiCitation { formatted_string: String::from("{{cite") }
+            WikiCitation { formatted_string: String::from("{{cite web") }
         }
 
         fn try_add<T: Display>(self, prefix: &str, value: &Option<T>) -> Self {
@@ -126,7 +126,7 @@ mod citation {
         }
 
         fn build(self) -> String {
-            format!("{} }}", self.formatted_string)
+            format!("{} }}}}", self.formatted_string)
         }
     }
 }
