@@ -1,9 +1,9 @@
 //! Generator responsible for producing a [`Reference`]
 
-use chrono::{NaiveDate, DateTime};
 use thiserror::Error;
 
-use crate::attribute::{AttributeConfigList, Attribute, InternalAttributeKey};
+use crate::attribute::AttributeType;
+use crate::parser::MetadataType;
 use crate::parser::{AttributeCollection, parse_html};
 use crate::reference::Reference;
 use crate::GenerationOptions;
@@ -16,26 +16,15 @@ pub enum ReferenceGenerationError {
     URLParseError(#[from] std::io::Error),
 }
 
-fn parse_date(date_string: Option<String>) -> Option<NaiveDate> {
-    // TODO: make this more clean (one liner?)
-
-    let date_time = match date_string {
-        Some(date) => DateTime::parse_from_rfc3339(&date as &str).ok(), // Option<DateTime>
-        None => None
-    };
-   
-    match date_time {
-        Some(dt) => Some(dt.date_naive()),
-        None => None
-    }
-}
-
-fn value_from_attribute(attribute_option: Option<&Attribute>) -> Option<String> {
-    match attribute_option {
-        Some(attribute) => Some(attribute.value.clone()),
-        None => None
-    }
-}
+pub struct AttributeConfig {
+    pub attribute_type: AttributeType,
+    pub priority: i32,
+ }
+ 
+ pub struct AttributeConfigList {
+    pub list: Vec<AttributeConfig>,
+    pub meta_data_type: MetadataType
+ }
 
 /// Create [`Reference`] by combining the extracted Open Graph and
 /// Schema.org metadata.
@@ -47,23 +36,22 @@ fn form_reference(url: &str, recipes: Vec<AttributeConfigList>) -> Result<Refere
         attribute_collection = attribute_collection.build(attribute_config_list, &html);
     }
     
-    let title = attribute_collection.get(InternalAttributeKey::Title);
-    let author = attribute_collection.get(InternalAttributeKey::Author);
-    let date = attribute_collection.get(InternalAttributeKey::Date);
-    let language = attribute_collection.get(InternalAttributeKey::Locale);
-    let site = attribute_collection.get(InternalAttributeKey::Site);
-    let url_attrib = attribute_collection.get(InternalAttributeKey::Url);
+    let title      = attribute_collection.get_as_attribute(AttributeType::Title);
+    let author     = attribute_collection.get_as_attribute(AttributeType::Author);
+    let date       = attribute_collection.get_as_attribute(AttributeType::Date);
+    let language   = attribute_collection.get_as_attribute(AttributeType::Locale);
+    let site       = attribute_collection.get_as_attribute(AttributeType::Site);
+    let url_attrib = attribute_collection.get_as_attribute(AttributeType::Url);
 
     let reference = Reference::NewsArticle { 
-        title: value_from_attribute(title),
-        author: value_from_attribute(author),
-        date: parse_date(value_from_attribute(date)),
-        language: value_from_attribute(language),
-        url: value_from_attribute(url_attrib),
-        site: value_from_attribute(site),
+        title: title.cloned(),
+        author: author.cloned(),
+        date: date.cloned(),
+        language: language.cloned(),
+        url: url_attrib.cloned(),
+        site: site.cloned(),
     };
     
-    println!("{:?}", reference);
     Ok(reference)
 }
 
