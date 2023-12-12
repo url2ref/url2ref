@@ -13,9 +13,10 @@ pub const fn keys(key: AttributeType) -> &'static [MetadataKey] {
     match key {
         AttributeType::Title    => &[MetadataKey{key: "headline"}, 
                                      MetadataKey{key: "alternativeHeadline"}],
-        AttributeType::Author   => &[MetadataKey{key: "author"}], // TODO
+        AttributeType::Author   => &[MetadataKey{key: "author"}],
         AttributeType::Language => &[MetadataKey{key: "inLanguage"}],
-        AttributeType::Site     => &[MetadataKey{key: "site_name"}], // TODO
+        AttributeType::Site     => &[MetadataKey{key: "publisher"},
+                                     MetadataKey{key: "sourceOrganization"}], 
         AttributeType::Url      => &[MetadataKey{key: "mainEntityOfPage"},  
                                      MetadataKey{key: "url"}],
         AttributeType::Date     => &[MetadataKey{key: "datePublished"}, 
@@ -168,8 +169,34 @@ fn create_author_attribute(schema_value: &Value, external_keys: &[MetadataKey]) 
     None
 }
 
+fn try_find_site_attribute(
+    schema_value: &Value,
+    external_keys: &[MetadataKey],
+) -> Option<String> {
+    for external_key in external_keys.iter() {
+        let value = &schema_value[external_key.key];
+        let found_option = match value {
+            Value::Object(value_map) => {
+                let name_value = &value_map["name"];
+                match name_value {
+                    Value::String(name) => Some(name.clone()),
+                    _ => None
+                }
+            }
+            _ => None
+        };
+        
+        if let Some(_) = found_option {
+            return found_option
+        }
+        
+    }
+    None
+}
+
+
 fn create_site_attribute(schema_value: &Value, external_keys: &[MetadataKey], attribute_type: AttributeType) -> Option<Attribute> {
-    let attribute_option = try_find_generic_attribute(&schema_value, external_keys);
+    let attribute_option = try_find_site_attribute(&schema_value, external_keys);
     if let Some(attribute_value) = attribute_option {
         return attribute_type_to_attribute(attribute_type, attribute_value);
     }
