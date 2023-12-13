@@ -1,5 +1,5 @@
-use url2ref::attribute::Attribute;
 use url2ref::*;
+use url2ref::attribute::Attribute;
 
 fn opengraph_test(path: &str, test_attributes: Vec<Attribute>) {
     let options = url2ref::GenerationOptions::default_opengraph();
@@ -66,12 +66,12 @@ fn opengraph_test(path: &str, test_attributes: Vec<Attribute>) {
 fn opengraph_1() {
     let path = "./tests/data/Ledende universitetsrektorers holdninger til antisemitisme udløser ramaskrig i USA - politiken.dk.html";
 
-    let expected_title = url2ref::attribute::Attribute::Title(
+    let expected_title = Attribute::Title(
         "Ledende universitetsrektorers holdninger til antisemitisme udløser ramaskrig i USA"
             .to_string(),
     );
-    let expected_url = url2ref::attribute::Attribute::Url("https://politiken.dk/internationalt/art9658207/Ledende-universitetsrektorers-holdninger-til-antisemitisme-udl%C3%B8ser-ramaskrig-i-USA".to_string());
-    let expected_site = url2ref::attribute::Attribute::Site("Politiken".to_string());
+    let expected_url = Attribute::Url("https://politiken.dk/internationalt/art9658207/Ledende-universitetsrektorers-holdninger-til-antisemitisme-udl%C3%B8ser-ramaskrig-i-USA".to_string());
+    let expected_site = Attribute::Site("Politiken".to_string());
 
     let test_attributes = vec![expected_title, expected_url, expected_site];
 
@@ -82,12 +82,12 @@ fn opengraph_1() {
 fn opengraph_2() {
     let path = "./tests/data/»I år skal jeg for første gang lave kamstegen på grillen«.html";
 
-    let expected_title = url2ref::attribute::Attribute::Title(
+    let expected_title = Attribute::Title(
         "»En hyldest til mine afdøde forældre«: Topkok serverer en forret, de færreste nok får juleaften"
             .to_string(),
     );
-    let expected_url = url2ref::attribute::Attribute::Url("https://jyllands-posten.dk/jpaarhus/ECE16679033/i-aar-skal-jeg-for-foerste-gang-lave-kamstegen-paa-grillen/".to_string());
-    let expected_site = url2ref::attribute::Attribute::Site("Jyllands-Posten".to_string());
+    let expected_url = Attribute::Url("https://jyllands-posten.dk/jpaarhus/ECE16679033/i-aar-skal-jeg-for-foerste-gang-lave-kamstegen-paa-grillen/".to_string());
+    let expected_site = Attribute::Site("Jyllands-Posten".to_string());
 
     let test_attributes = vec![expected_title, expected_url, expected_site];
 
@@ -98,12 +98,12 @@ fn opengraph_2() {
 fn opengraph_3() {
     let path = "./tests/data/'Vi er lidt forvirrede over, hvad der er sket_' Ekstremt klimaudsatte ø-stater kom for sent, da klimaaftale blev vedtaget _ Klima _ DR.html";
 
-    let expected_title = url2ref::attribute::Attribute::Title(
+    let expected_title = Attribute::Title(
         "'Vi er lidt forvirrede over, hvad der er sket?' Ekstremt klimaudsatte ø-stater kom for sent, da klimaaftale blev vedtaget"
             .to_string(),
     );
-    let expected_url = url2ref::attribute::Attribute::Url("https://www.dr.dk/nyheder/viden/klima/vi-er-lidt-forvirrede-over-hvad-der-er-sket-ekstremt-klimaudsatte-oe-stater-kom".to_string());
-    let expected_site = url2ref::attribute::Attribute::Site("DR".to_string());
+    let expected_url = Attribute::Url("https://www.dr.dk/nyheder/viden/klima/vi-er-lidt-forvirrede-over-hvad-der-er-sket-ekstremt-klimaudsatte-oe-stater-kom".to_string());
+    let expected_site = Attribute::Site("DR".to_string());
 
     let test_attributes = vec![expected_title, expected_url, expected_site];
 
@@ -114,11 +114,10 @@ fn opengraph_3() {
 fn opengraph_4() {
     let path = "./tests/data/Efter den vildeste lynmanøvre_ Klimaaftale på plads i Dubai _ Information.html";
 
-    let expected_title = url2ref::attribute::Attribute::Title(
-        "Efter den vildeste lynmanøvre: Klimaaftale på plads i Dubai".to_string(),
-    );
-    let expected_url = url2ref::attribute::Attribute::Url("https://www.information.dk/udland/2023/12/vildeste-lynmanoevre-klimaaftale-paa-plads-dubai".to_string());
-    let expected_site = url2ref::attribute::Attribute::Site("Information".to_string());
+    let expected_title =
+        Attribute::Title("Efter den vildeste lynmanøvre: Klimaaftale på plads i Dubai".to_string());
+    let expected_url = Attribute::Url("https://www.information.dk/udland/2023/12/vildeste-lynmanoevre-klimaaftale-paa-plads-dubai".to_string());
+    let expected_site = Attribute::Site("Information".to_string());
 
     let test_attributes = vec![expected_title, expected_url, expected_site];
 
@@ -129,12 +128,12 @@ fn opengraph_4() {
 fn opengraph_5() {
     let path = "./tests/data/Nyt kompromis kan blive »historisk«. Men der er stadig ingen udfasning af fossile brændsler _ Information.html";
 
-    let expected_title = url2ref::attribute::Attribute::Title(
+    let expected_title = Attribute::Title(
         "Nyt kompromis kan blive »historisk«. Men der er stadig ingen udfasning af fossile brændsler"
             .to_string(),
     );
-    let expected_url = url2ref::attribute::Attribute::Url("https://www.information.dk/udland/2023/12/nyt-kompromis-kan-historisk-stadig-ingen-udfasning-fossile-braendsler".to_string());
-    let expected_site = url2ref::attribute::Attribute::Site("Information".to_string());
+    let expected_url = Attribute::Url("https://www.information.dk/udland/2023/12/nyt-kompromis-kan-historisk-stadig-ingen-udfasning-fossile-braendsler".to_string());
+    let expected_site = Attribute::Site("Information".to_string());
     let expected_date = {
         let datetime = chrono::DateTime::parse_from_rfc3339("2023-12-13T09:35:30+01:00").unwrap();
         let date = datetime.date_naive();
@@ -150,14 +149,13 @@ fn opengraph_5() {
 fn opengraph_6() {
     let path = "./tests/data/He Might Have Been Pope. Instead, He May Go to Prison. - WSJ.html";
 
-    let expected_title = url2ref::attribute::Attribute::Title(
-        "He Might Have Been Pope. Instead, He May Go to Prison.".to_string(),
-    );
-    let expected_url = url2ref::attribute::Attribute::Url(
+    let expected_title =
+        Attribute::Title("He Might Have Been Pope. Instead, He May Go to Prison.".to_string());
+    let expected_url = Attribute::Url(
         "https://www.wsj.com/world/europe/cardinal-vatican-embezzlement-pope-francis-d66b1c83"
             .to_string(),
     );
-    let expected_site = url2ref::attribute::Attribute::Site("WSJ".to_string());
+    let expected_site = Attribute::Site("WSJ".to_string());
 
     let test_attributes = vec![expected_title, expected_url, expected_site];
 
