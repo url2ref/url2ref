@@ -26,8 +26,14 @@ pub struct StoredAttribute {
 }
 
 /// Parses the web page into an HTML object using [`webpage`].
-pub fn parse_html(url: &str) -> Result<HTML, ReferenceGenerationError> {
+pub fn parse_html_from_url(url: &str) -> Result<HTML, ReferenceGenerationError> {
     let html = Webpage::from_url(url, WebpageOptions::default())?.html;
+    Ok(html)
+}
+
+/// Parses the web page into an HTML object using [`webpage`].
+pub fn parse_html_from_file(path: &str) -> Result<HTML, ReferenceGenerationError> {
+    let html = HTML::from_file(path, None)?;
     Ok(html)
 }
 

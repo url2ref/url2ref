@@ -18,9 +18,7 @@ pub mod attribute;
 pub mod generator;
 pub mod schema_org;
 pub mod opengraph;
-use attribute::AttributeType;
-use parser::MetadataType;
-use generator::{AttributeConfig, AttributeConfigList, ReferenceGenerationError};
+use generator::{AttributeConfigList, ReferenceGenerationError};
 mod reference;
 pub use reference::*;
 mod parser;
@@ -34,18 +32,25 @@ pub struct GenerationOptions {
 }
 impl Default for GenerationOptions {
     fn default() -> Self {
-        let og = AttributeConfigList {
-                list: vec![
-                    AttributeConfig { attribute_type: AttributeType::Title, priority: 1},
-                    AttributeConfig { attribute_type: AttributeType::Author, priority: 1},
-                    AttributeConfig { attribute_type: AttributeType::Locale, priority: 1},
-                    AttributeConfig { attribute_type: AttributeType::Site, priority: 1},
-                    AttributeConfig { attribute_type: AttributeType::Url, priority: 1},
-                    AttributeConfig { attribute_type: AttributeType::Date, priority: 1},
-                    AttributeConfig { attribute_type: AttributeType::Type, priority: 1},
-                ],
-                meta_data_type: MetadataType::OpenGraph
-        };
+        let og = AttributeConfigList::default_opengraph();
+
+        Self {
+            recipes: vec![og],
+        }
+    }
+}
+
+impl GenerationOptions {
+    pub fn default_opengraph() -> GenerationOptions {
+        let og = AttributeConfigList::default_opengraph();
+
+        Self {
+            recipes: vec![og],
+        }
+    }
+
+    pub fn default_schema_org() -> GenerationOptions {
+        let og = AttributeConfigList::default_schema_org();
 
         Self {
             recipes: vec![og],
@@ -55,4 +60,8 @@ impl Default for GenerationOptions {
 
 pub fn generate(url: &str, options: GenerationOptions) -> Result<Reference, ReferenceGenerationError> {
     generator::generate(url, options)
+}
+
+pub fn generate_from_file(path: &str, options: GenerationOptions) -> Result<Reference, ReferenceGenerationError> {
+    generator::generate_from_file(path, options)
 }
