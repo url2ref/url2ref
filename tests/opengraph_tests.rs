@@ -104,7 +104,7 @@ fn opengraph_3() {
     );
     let expected_url = url2ref::attribute::Attribute::Url("https://www.dr.dk/nyheder/viden/klima/vi-er-lidt-forvirrede-over-hvad-der-er-sket-ekstremt-klimaudsatte-oe-stater-kom".to_string());
     let expected_site = url2ref::attribute::Attribute::Site("DR".to_string());
-    
+
     let test_attributes = vec![expected_title, expected_url, expected_site];
 
     opengraph_test(path, test_attributes);
@@ -135,8 +135,13 @@ fn opengraph_5() {
     );
     let expected_url = url2ref::attribute::Attribute::Url("https://www.information.dk/udland/2023/12/nyt-kompromis-kan-historisk-stadig-ingen-udfasning-fossile-braendsler".to_string());
     let expected_site = url2ref::attribute::Attribute::Site("Information".to_string());
+    let expected_date = {
+        let datetime = chrono::DateTime::parse_from_rfc3339("2023-12-13T09:35:30+01:00").unwrap();
+        let date = datetime.date_naive();
+        Attribute::Date(date)
+    };
 
-    let test_attributes = vec![expected_title, expected_url, expected_site];
+    let test_attributes = vec![expected_title, expected_url, expected_site, expected_date];
 
     opengraph_test(path, test_attributes);
 }
