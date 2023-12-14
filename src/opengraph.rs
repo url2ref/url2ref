@@ -76,9 +76,7 @@ impl AttributeParser for OpenGraph {
             if let Some(attribute_value) = attribute_option {
                 let attribute_option = attribute_type_to_attribute(attribute_type, attribute_value);
 
-                if let Some(attribute) = attribute_option {
-                    parsed_opengraph.insert(attribute_type, attribute);
-                }
+                Self::insert_if_some(&mut parsed_opengraph, attribute_type, attribute_option);
             }
         }
 

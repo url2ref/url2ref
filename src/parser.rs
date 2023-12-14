@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 
 use crate::attribute::{Attribute, AttributeType};
-use crate::generator::{ReferenceGenerationError, AttributeConfigList};
+use crate::generator::{AttributeConfigList, ReferenceGenerationError};
 use crate::opengraph::OpenGraph;
 use crate::schema_org::SchemaOrg;
 use chrono::{DateTime, NaiveDate};
@@ -16,13 +16,13 @@ pub struct MetadataKey {
 #[derive(Clone, Copy)]
 pub enum MetadataType {
     OpenGraph,
-    SchemaOrg
+    SchemaOrg,
 }
 
 #[derive(Clone)]
 pub struct StoredAttribute {
     pub value: Attribute,
-    pub priority: i32
+    pub priority: i32,
 }
 
 /// Parses the web page into an HTML object using [`webpage`].
@@ -49,6 +49,16 @@ pub fn parse_date(date_string: String) -> Option<NaiveDate> {
 
 pub trait AttributeParser {
     fn parse_attributes(html: &HTML) -> HashMap<AttributeType, Attribute>;
+
+    fn insert_if_some(
+        map: &mut HashMap<AttributeType, Attribute>,
+        attribute_type: AttributeType,
+        attribute_option: Option<Attribute>,
+    ) {
+        if let Some(attribute) = attribute_option {
+            map.insert(attribute_type, attribute);
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -126,7 +136,7 @@ impl AttributeCollection {
         let attribute_option = self.get(attribute_type);
         match attribute_option {
             Some(attribute) => Some(&attribute.value),
-            None => None
+            None => None,
         }
     }
 }
