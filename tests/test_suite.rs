@@ -26,6 +26,18 @@ fn string_to_attribute(field: &String, value: &String) -> Attribute {
     }
 }
 
+fn seq_to_attribute(seq: &Vec<Value>) -> Attribute {
+    let mut authors = Vec::new();
+    for value in seq {
+        match value {
+            Value::String(name) => authors.push(name.clone()),
+            _ => panic!("Invalid type in sequence")
+        };
+    }
+
+    Attribute::Author(authors)
+}
+
 fn string_to_parser(field: &String) -> Parser {
     match field.as_str() {
         "opengraph" => Parser::OpenGraph,
@@ -37,6 +49,7 @@ fn string_to_parser(field: &String) -> Parser {
 fn parse_mapping(map: &Mapping) -> Vec<Attribute> {
     map.iter().map(|(key, value)| match (key, value) {
         (Value::String(attribute_name), Value::String(attribute_value)) => string_to_attribute(attribute_name, attribute_value),
+        (Value::String(_), Value::Sequence(seq)) => seq_to_attribute(seq),
         _ => panic!("Unexpected attribute")
 
     }).collect()
@@ -50,7 +63,7 @@ fn open_expected(path: &str) -> HashMap<Parser, Vec<Attribute>> {
 
     if let Value::Mapping(root) = d {
         for (key, value) in root.iter() {
-            
+
             match (key, value) {
                 (Value::String(parser_string), Value::Mapping(fields)) => {
                     //println!("{:?} {:?}", parser_string, fields);
@@ -64,13 +77,13 @@ fn open_expected(path: &str) -> HashMap<Parser, Vec<Attribute>> {
             }
         }
     }
-    
+
     expected_attributes
 }
 
 fn check(html_path: &str, expected_path: &str) {
     let expected_results = open_expected(expected_path);
-    
+
     for (parser, expected_attributes) in expected_results.iter() {
         let options = match parser {
             Parser::OpenGraph => GenerationOptions::default_opengraph(),
@@ -79,21 +92,21 @@ fn check(html_path: &str, expected_path: &str) {
 
         actual_check(html_path, &expected_attributes, options);
     }
-    
+
 }
 
 fn gather_file_pairs(path: &str) -> Vec<(String, String)> {
     let dirs = std::fs::read_dir(path).unwrap();
     let mut case_dirs = Vec::new();
     let mut file_pairs = Vec::new();
-    
+
     for dir in dirs {
         let unwrapped = dir.unwrap();
         if unwrapped.path().is_dir() {
-            case_dirs.push(unwrapped.path().clone());            
+            case_dirs.push(unwrapped.path().clone());
         }
     }
-    
+
     for case_dir in case_dirs {
         let files_from_read_dir = std::fs::read_dir(case_dir.as_path()).unwrap();
 
@@ -112,11 +125,11 @@ fn gather_file_pairs(path: &str) -> Vec<(String, String)> {
                 (file1, file0)
             }
         };
-        
+
         println!{"html_path {:?} expected_path {:?}", html_path, expected_path};
         file_pairs.push((html_path.to_string(), expected_path.to_string()));
     }
-    
+
     file_pairs
 }
 
@@ -124,7 +137,7 @@ fn gather_file_pairs(path: &str) -> Vec<(String, String)> {
 fn test_all() {
     let test_path = "./tests/data";
     let file_pairs = gather_file_pairs(test_path);
-    
+
     for (html_path, expected_path) in file_pairs {
         check(html_path.as_str(), expected_path.as_str());
     }

@@ -32,7 +32,7 @@ pub struct GenerationOptions {
 }
 impl Default for GenerationOptions {
     fn default() -> Self {
-        let og = AttributeConfigList::default_opengraph();
+        let og = AttributeConfigList::default_schema_org();
 
         Self {
             recipes: vec![og],
