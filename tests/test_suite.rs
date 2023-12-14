@@ -1,5 +1,5 @@
 use serde_yaml::{Value, from_reader, Mapping};
-use std::{collections::HashMap, path::PathBuf, fs::File};
+use std::{collections::HashMap, path::PathBuf, fs::File, fs::read_dir};
 use url2ref::{attribute::Attribute, Reference, GenerationOptions};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -7,6 +7,30 @@ enum Parser {
     OpenGraph,
     SchemaOrg,
 }
+
+#[test]
+fn test_all() {
+    let test_path = "./tests/data";
+    let file_pairs = gather_file_pairs(test_path);
+
+    for (html_path, expected_path) in file_pairs {
+        check(html_path.as_str(), expected_path.as_str());
+    }
+}
+
+fn check(html_path: &str, expected_path: &str) {
+    let expected_results = open_expected(expected_path);
+
+    for (parser, expected_attributes) in expected_results.iter() {
+        let options = match parser {
+            Parser::OpenGraph => GenerationOptions::default_opengraph(),
+            Parser::SchemaOrg => GenerationOptions::default_schema_org(),
+        };
+
+        actual_check(html_path, &expected_attributes, options);
+    }
+}
+
 
 fn string_to_attribute(field: &String, value: &String) -> Attribute {
     match field.as_str() {
@@ -81,69 +105,44 @@ fn open_expected(path: &str) -> HashMap<Parser, Vec<Attribute>> {
     expected_attributes
 }
 
-fn check(html_path: &str, expected_path: &str) {
-    let expected_results = open_expected(expected_path);
-
-    for (parser, expected_attributes) in expected_results.iter() {
-        let options = match parser {
-            Parser::OpenGraph => GenerationOptions::default_opengraph(),
-            Parser::SchemaOrg => GenerationOptions::default_schema_org(),
-        };
-
-        actual_check(html_path, &expected_attributes, options);
-    }
-
-}
 
 fn gather_file_pairs(path: &str) -> Vec<(String, String)> {
-    let dirs = std::fs::read_dir(path).unwrap();
-    let mut case_dirs = Vec::new();
-    let mut file_pairs = Vec::new();
+    let dirs = read_dir(path).unwrap();
 
-    for dir in dirs {
-        let unwrapped = dir.unwrap();
-        if unwrapped.path().is_dir() {
-            case_dirs.push(unwrapped.path().clone());
+    // Get case directory files (e.g. case1, case2)
+    let case_dirs: Vec<PathBuf> = dirs.map(|dir| dir.unwrap().path())
+                                      .filter(|dir| dir.is_dir().clone()).collect();
+
+    // Collect all files from each directory [[files in case1], [files in case2], ...]
+    let collected_files: Vec<Vec<PathBuf>> = case_dirs.iter().map(|dir| {
+        let dirs = read_dir(dir.as_path()).unwrap();
+        let files = dirs.map(|f| f.unwrap()
+                                                                         .path()
+                                                                         .clone()).collect::<Vec<PathBuf>>();
+        files
+
+    }).collect();
+
+    let sorted_file_pairs: Vec<(String, String)> = collected_files.iter().map(|files| {
+        assert!(files.len() == 2);
+
+        let p1 = &files[0];
+        let p2 = &files[1];
+
+        let p1_string = p1.clone().into_os_string().into_string().unwrap();
+        let p2_string = p2.clone().into_os_string().into_string().unwrap();
+
+        if p1.extension().unwrap() == "html" {
+            assert!(p2.extension().unwrap() == "yml" || p2.extension().unwrap() == "yaml");
+            return (p1_string, p2_string)
         }
-    }
 
-    for case_dir in case_dirs {
-        let files_from_read_dir = std::fs::read_dir(case_dir.as_path()).unwrap();
+        assert!(p1.extension().unwrap() == "yml" || p1.extension().unwrap() == "yaml");
+        (p2_string, p1_string)
+    }).collect();
 
-        let mut files: Vec<PathBuf> = Vec::new();
-        for file in files_from_read_dir {
-            files.push(file.unwrap().path());
-        }
-        let (html_path, expected_path) = {
-            let file0 = files[0].to_str().unwrap();
-            let file1 = files[1].to_str().unwrap();
-
-            if files[0].extension().unwrap() == "html" {
-                (file0, file1)
-            }
-            else {
-                (file1, file0)
-            }
-        };
-
-        println!{"html_path {:?} expected_path {:?}", html_path, expected_path};
-        file_pairs.push((html_path.to_string(), expected_path.to_string()));
-    }
-
-    file_pairs
+    sorted_file_pairs
 }
-
-#[test]
-fn test_all() {
-    let test_path = "./tests/data";
-    let file_pairs = gather_file_pairs(test_path);
-
-    for (html_path, expected_path) in file_pairs {
-        check(html_path.as_str(), expected_path.as_str());
-    }
-}
-
-
 
 
 fn actual_check(path: &str, test_attributes: &Vec<Attribute>, options: url2ref::GenerationOptions) {
