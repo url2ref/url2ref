@@ -1,5 +1,8 @@
 use url2ref::*;
 
+
+pub mod opengraph_tests;
+
 #[test]
 fn politiken_tests() {
     let url = "https://politiken.dk/internationalt/art9658207/En-h%C3%B8ring-om-antisemitisme-afsl%C3%B8rede-ledende-universitetsrektorers-j%C3%B8dehad";

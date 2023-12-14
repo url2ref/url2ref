@@ -1,6 +1,7 @@
 use url2ref::*;
 use url2ref::attribute::Attribute;
 
+
 fn opengraph_test(path: &str, test_attributes: Vec<Attribute>) {
     let options = url2ref::GenerationOptions::default_opengraph();
 
