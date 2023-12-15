@@ -13,7 +13,7 @@ pub enum AttributeType {
    Type
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Attribute {
     Title(String),
     Author(Vec<String>),

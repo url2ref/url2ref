@@ -18,7 +18,8 @@ pub const fn keys(key: AttributeType) -> &'static [MetadataKey] {
         AttributeType::Site     => &[MetadataKey{key: "site_name"}],
         AttributeType::Url      => &[MetadataKey{key: "url"}],
         AttributeType::Date     => &[MetadataKey{key: "article:published_time"}, 
-                                     MetadataKey{key: "article:modified_time"}],
+                                     MetadataKey{key: "article:modified_time"},
+                                     MetadataKey{key: "updated_time"}],
         AttributeType::Type     => &[MetadataKey{key: "type"}],
         _                       => &[],
     }
