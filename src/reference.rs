@@ -7,7 +7,7 @@ use citation::*;
 use crate::attribute::Attribute;
 
 /// Enum for types of references.
-/// The names mirror the ones in the Schema.org vocabulary.
+/// The names generally mirror the ones in the Schema.org vocabulary.
 #[derive(Debug)]
 pub enum Reference {
     NewsArticle {

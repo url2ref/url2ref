@@ -23,6 +23,7 @@ mod reference;
 pub use reference::*;
 mod parser;
 
+/// Options for reference generation.
 pub struct GenerationOptions {
     recipes: Vec<AttributeConfigList>,
     // translate_title: bool,
