@@ -16,12 +16,14 @@
 
 pub mod attribute;
 pub mod generator;
-pub mod schema_org;
-pub mod opengraph;
-use generator::{AttributeConfigList, ReferenceGenerationError};
-mod reference;
-pub use reference::*;
+mod schema_org;
+mod opengraph;
+mod citation;
 mod parser;
+mod reference;
+
+use generator::{AttributeConfigList, ReferenceGenerationError};
+pub use reference::*;
 
 /// Options for reference generation.
 pub struct GenerationOptions {
