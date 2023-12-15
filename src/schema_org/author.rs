@@ -9,7 +9,7 @@ use serde_json::{Map, Value};
 
 fn try_find_author_array_of_persons_stategy(value_list: &Vec<Value>) -> Option<Vec<String>> {
     let mut ret = Vec::new();
-    println!("{:?}", value_list);
+    //println!("{:?}", value_list);
     for value in value_list {
         let name_option = match value {
             Value::Object(person) => match &person["name"] {
@@ -24,7 +24,7 @@ fn try_find_author_array_of_persons_stategy(value_list: &Vec<Value>) -> Option<V
         }
     }
 
-    println!("{:?}", ret);
+    //println!("{:?}", ret);
 
     if ret.is_empty() {
         return None;

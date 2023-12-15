@@ -65,7 +65,7 @@ fn attribute_type_to_attribute(
 impl AttributeParser for OpenGraph {
     fn parse_attributes(html: &HTML) -> HashMap<AttributeType, Attribute> {
         let mut parsed_opengraph = HashMap::new();
-        println!("{:?}", html.opengraph.properties);
+        //println!("{:?}", html.opengraph.properties);
 
         let og = &html.opengraph.properties;
 
@@ -80,7 +80,7 @@ impl AttributeParser for OpenGraph {
             }
         }
 
-        println!("{:?}", parsed_opengraph);
+        //println!("{:?}", parsed_opengraph);
         parsed_opengraph
     }
 }
