@@ -4,8 +4,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use chrono::NaiveDate;
-
 use crate::attribute::Attribute;
 
 pub trait CitationBuilder {
@@ -26,11 +24,6 @@ impl WikiCitation {
     fn handle_authors(&self, authors: &Vec<String>) -> String {
         todo!()
     }
-
-    // TODO: Implement
-    fn handle_date(&self, date: &NaiveDate) -> String {
-        todo!()
-    }
 }
 impl CitationBuilder for WikiCitation {
     fn new() -> Self {
@@ -48,7 +41,7 @@ impl CitationBuilder for WikiCitation {
         let result_option = match attribute {
             Attribute::Title(val) => Some(format!("|title={}", val.to_string())),
             Attribute::Author(vals) => None, // TODO: Implement
-            Attribute::Date(val) => None, // TODO: Implement
+            Attribute::Date(val) => Some(format!("|date={}", val.format("%Y-%m-%d").to_string())),
             Attribute::Language(val) => Some(format!("|language={}", val.to_string())),
             Attribute::Site(val) => Some(format!("|site={}", val.to_string())),
             Attribute::Url(val) => Some(format!("|url={}", val.to_string())),
@@ -79,11 +72,6 @@ impl BibTeXCitation {
     fn handle_authors(&self, authors: &Vec<String>) -> String {
         todo!()
     }
-
-    // TODO: Implement
-    fn handle_date(&self, date: &NaiveDate) -> String {
-        todo!()
-    }
 }
 impl CitationBuilder for BibTeXCitation {
     fn new() -> Self {
@@ -100,8 +88,8 @@ impl CitationBuilder for BibTeXCitation {
     fn add(mut self,  attribute: &Attribute) -> Self {
         let result_option = match attribute {
             Attribute::Title(val) => Some(format!("title = {{{}}}", val.to_string())),
-            Attribute::Author(vals) => None,
-            Attribute::Date(val) => None,
+            Attribute::Author(vals) => None, // TODO: Implement
+            Attribute::Date(val) => Some(format!("date = {{{}}}", val.format("%Y-%m-%d").to_string())),
             Attribute::Language(val) => Some(format!("language = {{{}}}", val.to_string())),
             Attribute::Site(val) => Some(format!("site = {{{}}}", val.to_string())),
             Attribute::Url(val) => Some(format!("url = {{{}}}", val.to_string())),
@@ -130,11 +118,6 @@ pub struct APACitation {
 impl APACitation {
     // TODO: Implement
     fn handle_authors(&self, authors: &Vec<String>) -> String {
-        todo!();
-    }
-
-    // TODO: Implement
-    fn handle_date(&self, date: &NaiveDate) -> String {
         todo!();
     }
 }
