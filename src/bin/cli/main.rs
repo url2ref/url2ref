@@ -1,22 +1,38 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 
 use url2ref::*;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[derive(Parser)]
+#[clap(author, version, about, long_about = None)]
 struct CommandLineArgs {
-    #[arg(short, long)]
+    #[clap(short, long)]
     url: String,
 
-    #[arg(short, long)]
-    ref_type: Option<String>,
+    #[clap(short, long, value_enum, default_value_t=CitationFormat::Wiki)]
+    format: CitationFormat,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum CitationFormat {
+    /// Using {{cite web}} MediaWiki markup
+    Wiki,
+    /// Using BibTeX markup
+    Bibtex,
+    /// Using the APA style
+    APA,
+}
 
 fn main() {
     let args = CommandLineArgs::parse();
     let query = args.url;
 
     let reference = generate(&query, url2ref::GenerationOptions::default()).unwrap();
-    println!("{}", reference.wiki())
+
+    let output = match args.format {
+        CitationFormat::Wiki => reference.wiki(),
+        CitationFormat::Bibtex => reference.bibtex(),
+        CitationFormat::APA => reference.apa(),
+    };
+
+    println!("{}", output);
 }
