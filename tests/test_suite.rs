@@ -18,18 +18,18 @@ fn test_all() {
     }
 }
 
-fn check(html_path: &str, expected_path: &str) {
-    let expected_results = open_expected(expected_path);
+/// Prepares the appropriate [`GenerationOptions`] for the set of expected
+/// reference generation results obtained using each [`Parser`] and calls the
+/// [`actual_check`] function to perform the comparison.
+fn check(html_path: &str, expected_results_path: &str) {
+    let expected_results = get_expected_results(expected_results_path);
 
-    for (parser, expected_attributes) in expected_results.iter() {
-        let options = match parser {
-            Parser::OpenGraph => GenerationOptions::default_opengraph(),
-            Parser::SchemaOrg => GenerationOptions::default_schema_org(),
+    for (metadata_parser, expected_attributes) in expected_results.iter() {
+        let generation_options = match metadata_parser {
+            Parser::OpenGraph => GenerationOptions::new(vec!(AttributeConfigList::default_opengraph())),
+            Parser::SchemaOrg => GenerationOptions::new(vec!(AttributeConfigList::default_schema_org())),
         };
 
-        actual_check(html_path, &expected_attributes, options);
-    }
-}
 
 
 fn string_to_attribute(field: &String, value: &String) -> Attribute {
