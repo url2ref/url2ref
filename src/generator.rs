@@ -1,5 +1,7 @@
 //! Generator responsible for producing a [`Reference`]
 
+use std::result;
+
 use strum::IntoEnumIterator;
 use thiserror::Error;
 use webpage::HTML;
@@ -8,6 +10,8 @@ use crate::attribute::AttributeType;
 use crate::parser::{parse_html_from_file, parse_html_from_url, AttributeCollection, MetadataType};
 use crate::reference::Reference;
 use crate::GenerationOptions;
+
+type Result<T> = result::Result<T, ReferenceGenerationError>;
 
 /// Errors encountered during reference generation are
 /// wrapped in this enum.
@@ -30,10 +34,7 @@ pub struct AttributeConfigList {
 impl AttributeConfigList {
     fn default_list() -> Vec<AttributeConfig> {
         AttributeType::iter()
-            .map(|at| AttributeConfig {
-                attribute_type: at,
-                priority: 1,
-            })
+            .map(|attribute_type| AttributeConfig { attribute_type, priority: 1 })
             .collect()
     }
 
@@ -52,18 +53,12 @@ impl AttributeConfigList {
     }
 }
 
-fn form_reference_from_url(
-    url: &str,
-    recipes: &[AttributeConfigList],
-) -> Result<Reference, ReferenceGenerationError> {
+fn form_reference_from_url(url: &str, recipes: &[AttributeConfigList]) -> Result<Reference> {
     let html = parse_html_from_url(url)?;
     form_reference(&html, recipes)
 }
 
-fn form_reference_from_file(
-    path: &str,
-    recipes: &[AttributeConfigList],
-) -> Result<Reference, ReferenceGenerationError> {
+fn form_reference_from_file(path: &str, recipes: &[AttributeConfigList]) -> Result<Reference> {
     let html = parse_html_from_file(path)?;
     form_reference(&html, recipes)
 }
@@ -71,10 +66,7 @@ fn form_reference_from_file(
 
 /// Create [`Reference`] by combining the extracted Open Graph and
 /// Schema.org metadata.
-fn form_reference(
-    html: &HTML,
-    recipes: &[AttributeConfigList],
-) -> Result<Reference, ReferenceGenerationError> {
+fn form_reference(html: &HTML, recipes: &[AttributeConfigList]) -> Result<Reference> {
     let mut attribute_collection = AttributeCollection::new();
 
     for attribute_config_list in recipes.iter() {
@@ -101,10 +93,7 @@ fn form_reference(
 }
 
 /// Generate a [`Reference`] from a URL string.
-pub fn generate(
-    url: &str,
-    options: &GenerationOptions,
-) -> Result<Reference, ReferenceGenerationError> {
+pub fn generate(url: &str, options: &GenerationOptions) -> Result<Reference> {
     // Parse the HTML to gain access to Schema.org and Open Graph metadata
     let reference = form_reference_from_url(url, &options.recipes);
 
@@ -112,10 +101,7 @@ pub fn generate(
 }
 
 /// Generate a [`Reference`] from a raw HTML string read from a file.
-pub fn generate_from_file(
-    path: &str,
-    options: &GenerationOptions,
-) -> Result<Reference, ReferenceGenerationError> {
+pub fn generate_from_file(path: &str, options: &GenerationOptions) -> Result<Reference> {
     // Parse the HTML to gain access to Schema.org and Open Graph metadata
     let reference = form_reference_from_file(path, &options.recipes);
 

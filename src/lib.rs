@@ -14,6 +14,8 @@
 //! [BibTeX]: https://www.bibtex.org/
 //! [MediaWiki]: https://www.mediawiki.org/wiki/Help:Cite
 
+use std::result;
+
 pub mod attribute;
 pub mod generator;
 mod schema_org;
@@ -24,6 +26,8 @@ mod reference;
 
 use generator::{AttributeConfigList, ReferenceGenerationError};
 pub use reference::*;
+
+type Result<T> = result::Result<T, ReferenceGenerationError>;
 
 /// Options for reference generation.
 pub struct GenerationOptions {
@@ -46,10 +50,10 @@ impl GenerationOptions {
     }
 }
 
-pub fn generate(url: &str, options: &GenerationOptions) -> Result<Reference, ReferenceGenerationError> {
+pub fn generate(url: &str, options: &GenerationOptions) -> Result<Reference> {
     generator::generate(url, options)
 }
 
-pub fn generate_from_file(path: &str, options: &GenerationOptions) -> Result<Reference, ReferenceGenerationError> {
+pub fn generate_from_file(path: &str, options: &GenerationOptions) -> Result<Reference> {
     generator::generate_from_file(path, options)
 }

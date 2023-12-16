@@ -1,5 +1,6 @@
 //! Parser which extracts the metadata to be combined into the final [`Reference`]
 use std::collections::HashMap;
+use std::result;
 
 use crate::attribute::{Attribute, AttributeType};
 use crate::generator::{AttributeConfigList, ReferenceGenerationError};
@@ -7,6 +8,8 @@ use crate::opengraph::OpenGraph;
 use crate::schema_org::SchemaOrg;
 use chrono::{DateTime, NaiveDate};
 use webpage::{Webpage, WebpageOptions, HTML};
+
+type Result<T> = result::Result<T, ReferenceGenerationError>;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct MetadataKey {
@@ -26,13 +29,13 @@ pub struct StoredAttribute {
 }
 
 /// Parses the web page into an HTML object using [`webpage`].
-pub fn parse_html_from_url(url: &str) -> Result<HTML, ReferenceGenerationError> {
+pub fn parse_html_from_url(url: &str) -> Result<HTML> {
     let html = Webpage::from_url(url, WebpageOptions::default())?.html;
     Ok(html)
 }
 
 /// Parses the web page into an HTML object using [`webpage`].
-pub fn parse_html_from_file(path: &str) -> Result<HTML, ReferenceGenerationError> {
+pub fn parse_html_from_file(path: &str) -> Result<HTML> {
     let html = HTML::from_file(path, None)?;
     Ok(html)
 }
