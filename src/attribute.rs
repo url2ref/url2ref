@@ -24,7 +24,7 @@ pub enum AttributeType {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Attribute {
     Title(String),
-    Author(Vec<String>),
+    Authors(Vec<Author>),
     Date(NaiveDate),
     Language(String),
     Locale(String),
@@ -32,4 +32,12 @@ pub enum Attribute {
     Url(String),
     Journal(String),
     Publisher(String)
+}
+
+/// Author enum to make handling of authors in [`crate::citation`] easier.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Author {
+    Person(String),
+    Organization(String),
+    Generic(String)
 }

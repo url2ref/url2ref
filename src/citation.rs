@@ -4,12 +4,12 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use crate::attribute::Attribute;
+use crate::attribute::{Attribute, Author};
 
 pub trait CitationBuilder {
     fn new() -> Self;
-    fn try_add(self, value: &Option<Attribute>) -> Self;
-    fn add(self, value: &Attribute) -> Self;
+    fn try_add(self, attribute_option: &Option<Attribute>) -> Self;
+    fn add(self, attribute: &Attribute) -> Self;
     fn build(self) -> String;
 }
 
@@ -21,7 +21,7 @@ pub struct WikiCitation {
 }
 impl WikiCitation {
     // TODO: Implement
-    fn handle_authors(&self, authors: &Vec<String>) -> String {
+    fn handle_authors(&self, authors: &Vec<Author>) -> String {
         todo!()
     }
 }
@@ -40,7 +40,7 @@ impl CitationBuilder for WikiCitation {
     fn add(mut self,  attribute: &Attribute) -> Self {
         let result_option = match attribute {
             Attribute::Title(val) => Some(format!("|title={}", val.to_string())),
-            Attribute::Author(vals) => None, // TODO: Implement
+            Attribute::Authors(vals) => Some(self.handle_authors(vals)),
             Attribute::Date(val) => Some(format!("|date={}", val.format("%Y-%m-%d").to_string())),
             Attribute::Language(val) => Some(format!("|language={}", val.to_string())),
             Attribute::Site(val) => Some(format!("|site={}", val.to_string())),
@@ -88,7 +88,7 @@ impl CitationBuilder for BibTeXCitation {
     fn add(mut self,  attribute: &Attribute) -> Self {
         let result_option = match attribute {
             Attribute::Title(val) => Some(format!("title = {{{}}}", val.to_string())),
-            Attribute::Author(vals) => None, // TODO: Implement
+            Attribute::Authors(vals) => None, // TODO: Implement
             Attribute::Date(val) => Some(format!("date = {{{}}}", val.format("%Y-%m-%d").to_string())),
             Attribute::Language(val) => Some(format!("language = {{{}}}", val.to_string())),
             Attribute::Site(val) => Some(format!("site = {{{}}}", val.to_string())),
@@ -136,7 +136,7 @@ impl CitationBuilder for APACitation {
     fn add(self,  attribute: &Attribute) -> Self {
         let result_option = match attribute {
             Attribute::Title(val) => Some(("title", val)),
-            Attribute::Author(vals) => None, // TODO: Implement
+            Attribute::Authors(vals) => None, // TODO: Implement
             Attribute::Date(val) => None, // TODO: Implement
             Attribute::Language(val) => Some(("language", val)),
             Attribute::Site(val) => Some(("site", val)),

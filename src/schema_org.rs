@@ -45,9 +45,13 @@ impl AttributeParser for SchemaOrg {
         let mut parsed_schema = HashMap::new(); 
 
         // TODO: don't assume that the first object is the correct entity
-        let schema = &html.schema_org[0];
-        let schema_json: &Value = &schema.value; 
-        //println!("{:?}", schema_json);
+        let schema = &html.schema_org.get(0);
+        
+        if let None = schema {
+            return parsed_schema
+        }
+
+        let schema_json: &Value = &schema.unwrap().value;
 
         for attribute_type in AttributeType::iter() {
             let external_keys = keys(attribute_type);
@@ -62,7 +66,6 @@ impl AttributeParser for SchemaOrg {
             Self::insert_if_some(&mut parsed_schema, attribute_type, attribute_option);
         }
 
-        //println!("{:?}", parsed_schema);
         parsed_schema
     }
 }

@@ -1,75 +1,60 @@
-/// Strategies for parsing [`Attribute`]::Author.
+//! Strategies for parsing [`Attribute::Author`].
 
 
-use crate::attribute::Attribute;
+use crate::attribute::{Attribute, Author};
 use crate::schema_org::MetadataKey;
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 
-fn try_find_author_array_of_persons_stategy(value_list: &Vec<Value>) -> Option<Vec<String>> {
-    let mut ret = Vec::new();
-    //println!("{:?}", value_list);
-    for value in value_list {
-        let name_option = match value {
-            Value::Object(person) => match &person["name"] {
-                Value::String(name) => Some(name.clone()),
-                _ => None,
-            },
-            _ => None,
-        };
-
-        if let Some(name) = name_option {
-            ret.push(name);
-        }
+fn match_author_type(author_type: &String, name: &String) -> Option<Author> {
+    match author_type.as_str() {
+        "@Person" => Some(Author::Person(name.clone())),
+        "@Organization" => Some(Author::Organization(name.clone())),
+        _ => None
     }
+}
 
-    //println!("{:?}", ret);
 
-    if ret.is_empty() {
-        return None;
+fn match_tuple(object_type: &Value, name_value: &Value) -> Option<Author> {
+    match (object_type, name_value) {
+        (Value::String(author_type), Value::String(name)) => match_author_type(author_type, name),
+        (_, _) => None
+    }
+}
+
+
+fn try_find_author_array_of_persons_stategy(value_list: &Vec<Value>) -> Option<Vec<Author>> {
+    let mut ret = Vec::new();
+    for value in value_list {
+        match value {
+            Value::Object(map) => {
+                let object_type = &map["@type"];
+                let name_value = &map["name"];
+                let author_option = match_tuple(object_type, name_value);
+                
+                if let Some(author) = author_option {
+                    ret.push(author);
+                }
+                
+            },
+            _ => todo!()
+        }
     }
 
     Some(ret)
 }
 
-fn try_find_author_map_of_persons(value_map: &Map<String, Value>) -> Option<Vec<String>> {
-    let person_array = &value_map["name"];
-
-    let ret: Option<Vec<String>> = match person_array {
-        Value::Array(value_list) => {
-            let mut inner: Vec<String> = Vec::new();
-
-            for value in value_list {
-                let name_option = match value {
-                    Value::String(name) => Some(name.clone()),
-                    _ => None,
-                };
-
-                if let Some(name) = name_option {
-                    inner.push(name);
-                }
-            }
-
-            return Some(inner);
-        }
-        _ => None,
-    };
-
-    println!("{:?}", ret);
-
-    ret
-}
 
 fn try_find_author_attribute(
     schema_value: &Value,
     external_keys: &[MetadataKey],
-) -> Option<Vec<String>> {
+) -> Option<Vec<Author>> {
     for external_key in external_keys.iter() {
         let value = &schema_value[external_key.key];
         let found_option = match value {
             Value::Array(value_list) => try_find_author_array_of_persons_stategy(&value_list),
-            Value::Object(value_map) => try_find_author_map_of_persons(&value_map),
+            Value::Object(_) => None, // -> @Person, @Organization
             _ => None,
         };
 
@@ -81,13 +66,10 @@ fn try_find_author_attribute(
     None
 }
 
-pub fn create_author_attribute(
-    schema_value: &Value,
-    external_keys: &[MetadataKey],
-) -> Option<Attribute> {
+pub fn create_author_attribute(schema_value: &Value, external_keys: &[MetadataKey]) -> Option<Attribute> {
     let attribute_option = try_find_author_attribute(&schema_value, external_keys);
     if let Some(attribute_value) = attribute_option {
-        return Some(Attribute::Author(attribute_value));
+        Some(Attribute::Authors(attribute_value));
     }
 
     None

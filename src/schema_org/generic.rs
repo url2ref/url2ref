@@ -28,7 +28,7 @@ pub fn attribute_type_to_attribute(
 ) -> Option<Attribute> {
     match attribute_type {
         AttributeType::Title => Some(Attribute::Title(attribute_value)),
-        AttributeType::Author => Some(Attribute::Author(vec![attribute_value])),
+        AttributeType::Author => panic!("Author should have been handled by specialized method"),
         AttributeType::Date => {
             let date_option = parse_date(attribute_value);
             match date_option {
@@ -38,7 +38,7 @@ pub fn attribute_type_to_attribute(
         }
         AttributeType::Locale => Some(Attribute::Locale(attribute_value)),
         AttributeType::Language => Some(Attribute::Language(attribute_value)),
-        AttributeType::Site => Some(Attribute::Site(attribute_value)),
+        AttributeType::Site => panic!("Site should have been handled by specialized method"),
         AttributeType::Url => Some(Attribute::Url(attribute_value)),
         AttributeType::Type => None,
     }

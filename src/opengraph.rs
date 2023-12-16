@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use strum::IntoEnumIterator;
 use webpage::HTML;
 
-use crate::attribute::{Attribute, AttributeType};
+use crate::attribute::{Attribute, AttributeType, Author};
 use crate::parser::MetadataKey;
 use crate::parser::{parse_date, AttributeParser};
 
@@ -46,7 +46,10 @@ fn attribute_type_to_attribute(
 ) -> Option<Attribute> {
     match attribute_type {
         AttributeType::Title  => Some(Attribute::Title(attribute_value)),
-        AttributeType::Author => Some(Attribute::Author(vec![attribute_value])),
+        AttributeType::Author => {
+            let author = Author::Generic(attribute_value);
+            Some(Attribute::Authors(vec![author]))
+        },
         AttributeType::Date   => {
             let date_option = parse_date(attribute_value);
             match date_option {
@@ -65,7 +68,6 @@ fn attribute_type_to_attribute(
 impl AttributeParser for OpenGraph {
     fn parse_attributes(html: &HTML) -> HashMap<AttributeType, Attribute> {
         let mut parsed_opengraph = HashMap::new();
-        //println!("{:?}", html.opengraph.properties);
 
         let og = &html.opengraph.properties;
 
@@ -80,7 +82,6 @@ impl AttributeParser for OpenGraph {
             }
         }
 
-        //println!("{:?}", parsed_opengraph);
         parsed_opengraph
     }
 }
