@@ -39,7 +39,7 @@ pub struct GenerationOptions {
 }
 impl Default for GenerationOptions {
     fn default() -> Self {
-        let recipes = vec!(AttributeConfigList::default_schema_org());
+        let recipes = vec!(AttributeConfigList::default_schema_org(), AttributeConfigList::default_opengraph());
 
         Self { recipes }
     }
