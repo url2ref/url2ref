@@ -5,5 +5,5 @@ opengraph:
 schema_org:
   title: "Ledende universitetsrektorers holdninger til antisemitisme udløser ramaskrig i USA"
   site: "Politiken"
-  author: "Søren Astrup"
+  # author: "Søren Astrup" -- Wrong Schema.org format used, ignored
   date: "2023-12-11"

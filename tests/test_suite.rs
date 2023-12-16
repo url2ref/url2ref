@@ -51,8 +51,9 @@ fn actual_check(html_path: &str, expected_attributes: &Vec<Attribute>, generatio
     }
 
     // TODO: Resolve this...
-    assert!(matches!(reference, Reference::GenericReference { .. }));
-    if let url2ref::Reference::GenericReference {
+    println!("{:?}", reference);
+    assert!(matches!(reference, Reference::NewsArticle { .. }));
+    if let url2ref::Reference::NewsArticle {
         title,
         author,
         date,
