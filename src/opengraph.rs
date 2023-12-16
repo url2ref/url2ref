@@ -8,8 +8,8 @@ use crate::parser::MetadataKey;
 use crate::parser::{parse_date, AttributeParser};
 
 
-/// Mapping from generic [`InternalAttributeKey`] to OpenGraph-specific
-/// [`AttributeKey`] instances.
+/// Mapping from generic [`AttributeType`] to Open Graph-specific
+/// [`MetadataKey`] instances.
 pub const fn keys(key: AttributeType) -> &'static [MetadataKey] {
     match key {
         AttributeType::Title    => &[MetadataKey{key: "title"}],

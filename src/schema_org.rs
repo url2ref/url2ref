@@ -6,19 +6,18 @@ use generic::create_generic_attribute;
 use author::create_author_attribute;
 use site::create_site_attribute;
 
-
 use std::collections::HashMap;
 
 use strum::IntoEnumIterator;
 use webpage::HTML;
 use serde_json::Value;
 
-
 use crate::parser::{AttributeParser, MetadataKey};
 use crate::attribute::{Attribute, AttributeType};
 
-/// Mapping from generic [`InternalAttributeKey`] to Schema.org-specific
-/// [`AttributeKey`] instances.
+
+/// Mapping from generic [`AttributeType`] to Schema.org-specific
+/// [`MetadataKey`] instances.
 pub const fn keys(key: AttributeType) -> &'static [MetadataKey] {
     match key {
         AttributeType::Title    => &[MetadataKey{key: "headline"}, 
@@ -35,7 +34,6 @@ pub const fn keys(key: AttributeType) -> &'static [MetadataKey] {
         _                       => &[],
     }
 }
-
 
 pub struct SchemaOrg;
 
