@@ -46,10 +46,10 @@ impl GenerationOptions {
     }
 }
 
-pub fn generate(url: &str, options: GenerationOptions) -> Result<Reference, ReferenceGenerationError> {
+pub fn generate(url: &str, options: &GenerationOptions) -> Result<Reference, ReferenceGenerationError> {
     generator::generate(url, options)
 }
 
-pub fn generate_from_file(path: &str, options: GenerationOptions) -> Result<Reference, ReferenceGenerationError> {
+pub fn generate_from_file(path: &str, options: &GenerationOptions) -> Result<Reference, ReferenceGenerationError> {
     generator::generate_from_file(path, options)
 }

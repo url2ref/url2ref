@@ -26,7 +26,7 @@ fn main() {
     let args = CommandLineArgs::parse();
     let query = args.url;
 
-    let reference = generate(&query, url2ref::GenerationOptions::default()).unwrap();
+    let reference = generate(&query, &GenerationOptions::default()).unwrap();
 
     let output = match args.format {
         CitationFormat::Wiki => reference.wiki(),

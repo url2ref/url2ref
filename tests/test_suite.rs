@@ -33,13 +33,13 @@ fn check(html_path: &str, expected_results_path: &str) {
             Parser::SchemaOrg => GenerationOptions::new(vec!(AttributeConfigList::default_schema_org())),
         };
 
-        actual_check(html_path, &expected_attributes, generation_options);
+        actual_check(html_path, &expected_attributes, &generation_options);
     }
 }
 
 /// Compares a HTML data sample to the expected reference generation results
 /// obtained according to a particular set of [`GenerationOptions`].
-fn actual_check(html_path: &str, expected_attributes: &Vec<Attribute>, generation_options: url2ref::GenerationOptions) {
+fn actual_check(html_path: &str, expected_attributes: &Vec<Attribute>, generation_options: &GenerationOptions) {
     let reference_result = url2ref::generate_from_file(html_path, generation_options);
     assert_eq!(reference_result.is_err(), false, "Reference generation shouldn't fail with error");
     let reference = reference_result.unwrap();
@@ -53,7 +53,7 @@ fn actual_check(html_path: &str, expected_attributes: &Vec<Attribute>, generatio
     // TODO: Resolve this...
     println!("{:?}", reference);
     assert!(matches!(reference, Reference::NewsArticle { .. }));
-    if let url2ref::Reference::NewsArticle {
+    if let Reference::NewsArticle {
         title,
         author,
         date,

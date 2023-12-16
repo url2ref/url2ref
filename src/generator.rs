@@ -54,7 +54,7 @@ impl AttributeConfigList {
 
 fn form_reference_from_url(
     url: &str,
-    recipes: Vec<AttributeConfigList>,
+    recipes: &[AttributeConfigList],
 ) -> Result<Reference, ReferenceGenerationError> {
     let html = parse_html_from_url(url)?;
     form_reference(&html, recipes)
@@ -62,7 +62,7 @@ fn form_reference_from_url(
 
 fn form_reference_from_file(
     path: &str,
-    recipes: Vec<AttributeConfigList>,
+    recipes: &[AttributeConfigList],
 ) -> Result<Reference, ReferenceGenerationError> {
     let html = parse_html_from_file(path)?;
     form_reference(&html, recipes)
@@ -73,7 +73,7 @@ fn form_reference_from_file(
 /// Schema.org metadata.
 fn form_reference(
     html: &HTML,
-    recipes: Vec<AttributeConfigList>,
+    recipes: &[AttributeConfigList],
 ) -> Result<Reference, ReferenceGenerationError> {
     let mut attribute_collection = AttributeCollection::new();
 
@@ -103,10 +103,10 @@ fn form_reference(
 /// Generate a [`Reference`] from a URL string.
 pub fn generate(
     url: &str,
-    options: GenerationOptions,
+    options: &GenerationOptions,
 ) -> Result<Reference, ReferenceGenerationError> {
     // Parse the HTML to gain access to Schema.org and Open Graph metadata
-    let reference = form_reference_from_url(url, options.recipes);
+    let reference = form_reference_from_url(url, &options.recipes);
 
     reference
 }
@@ -114,10 +114,10 @@ pub fn generate(
 /// Generate a [`Reference`] from a raw HTML string read from a file.
 pub fn generate_from_file(
     path: &str,
-    options: GenerationOptions,
+    options: &GenerationOptions,
 ) -> Result<Reference, ReferenceGenerationError> {
     // Parse the HTML to gain access to Schema.org and Open Graph metadata
-    let reference = form_reference_from_file(path, options.recipes);
+    let reference = form_reference_from_file(path, &options.recipes);
 
     reference
 }
