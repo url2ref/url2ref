@@ -33,7 +33,10 @@ impl WikiCitation {
                 Author::Person(str) => {
                     let parts: Vec<&str> = str.split_whitespace().collect();
                     match parts.as_slice() {
-                        [first_name @ .., last_name] => format!("|last{i}={last_name} |first{i}={}", first_name.join(" ")),
+                        [first_names @ .., last_name] => {
+                            let first_names = first_names.join(" ");
+                            format!("|last{i}={last_name} |first{i}={first_names}")
+                        }
                         _ => default(str),
                     }
                 },
@@ -41,11 +44,10 @@ impl WikiCitation {
             }
         }
 
-        // Create complete string containing all authors
         let output: String = authors
             .iter()
             .enumerate()
-            .map(|(index, author)| stringify_author(author, (authors.len() > 1).then(|| (index + 1) as i32)))
+            .map(|(i, author)| stringify_author(author, (authors.len() > 1).then(|| (i + 1) as i32)))
             .collect::<Vec<String>>()
             .join(" ");
         output
@@ -94,9 +96,33 @@ pub struct BibTeXCitation {
     formatted_string: String,
 }
 impl BibTeXCitation {
-    // TODO: Implement
+
     fn handle_authors(&self, authors: &[Author]) -> String {
-        todo!()
+
+        // Creates a string representing an author in a style compatible with BibTeX markup
+        fn stringify_author(author: &Author) -> String {
+            match author {
+                Author::Person(str) => {
+                    let parts: Vec<&str> = str.split_whitespace().collect();
+                    match parts.as_slice() {
+                        [first_names @ .., last_name] => {
+                            let first_names = first_names.join(" ");
+                            format!("{last_name}, {first_names}")
+                        }
+                        _ => str.to_string(),
+                    }
+                },
+                Author::Organization(str) | Author::Generic(str) => str.to_string(),
+            }
+        }
+
+        let author_list: String = authors
+            .iter()
+            .map(|author| stringify_author(author))
+            .collect::<Vec<String>>()
+            .join(" and ");
+        let output = format!("author = {{{}}}", author_list);
+        output
     }
 }
 impl CitationBuilder for BibTeXCitation {
@@ -114,7 +140,7 @@ impl CitationBuilder for BibTeXCitation {
     fn add(mut self,  attribute: &Attribute) -> Self {
         let result_option = match attribute {
             Attribute::Title(val) => Some(format!("title = {{{}}}", val.to_string())),
-            Attribute::Authors(vals) => None, // TODO: Implement
+            Attribute::Authors(vals) => Some(self.handle_authors(vals)),
             Attribute::Date(val) => Some(format!("date = {{{}}}", val.format("%Y-%m-%d").to_string())),
             Attribute::Language(val) => Some(format!("language = {{{}}}", val.to_string())),
             Attribute::Site(val) => Some(format!("site = {{{}}}", val.to_string())),
@@ -131,7 +157,7 @@ impl CitationBuilder for BibTeXCitation {
     }
 
     fn build(self) -> String {
-        format!("@misc{{ url2ref,{} }}", self.formatted_string)
+        format!("@misc{{ url2ref,{}\n}}", self.formatted_string)
     }
 }
 
