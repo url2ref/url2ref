@@ -1,9 +1,6 @@
 //! Module providing functionality for building up citations
 //! in various formats using the Builder pattern.
 
-#![allow(dead_code)]
-#![allow(unused_variables)]
-
 use crate::attribute::{Attribute, Author};
 
 pub trait CitationBuilder {
@@ -20,14 +17,43 @@ pub struct WikiCitation {
     formatted_string: String,
 }
 impl WikiCitation {
-    // TODO: Implement
-    fn handle_authors(&self, authors: &Vec<Author>) -> String {
-        todo!()
+    // Author handling; the {{cite web}} Wikipedia template
+    // uses different parameters depending on the number and type of authors.
+    fn handle_authors(&self, authors: &[Author]) -> String {
+
+        // Creates a string representing an author 
+        // according to the {{cite web}} Wikipedia template.
+        fn stringify_author(author: &Author, count: Option<i32>) -> String {
+            // Determine whether index should be inserted after author parameters;
+            // this must be done when there are multiple authors.
+            let i = count.map(|v| v.to_string()).unwrap_or_default();
+            // Trivial default case
+            let default = |a: &str| format!("|author{i}={}", a);
+            match author {
+                Author::Person(str) => {
+                    let parts: Vec<&str> = str.split_whitespace().collect();
+                    match parts.as_slice() {
+                        [first_name @ .., last_name] => format!("|last{i}={last_name} |first{i}={}", first_name.join(" ")),
+                        _ => default(str),
+                    }
+                },
+                Author::Organization(str) | Author::Generic(str) => default(str),
+            }
+        }
+
+        // Create complete string containing all authors
+        let output: String = authors
+            .iter()
+            .enumerate()
+            .map(|(index, author)| stringify_author(author, (authors.len() > 1).then(|| (index + 1) as i32)))
+            .collect::<Vec<String>>()
+            .join(" ");
+        output
     }
 }
 impl CitationBuilder for WikiCitation {
     fn new() -> Self {
-        WikiCitation { formatted_string: String::from("") }
+        Self { formatted_string: String::from("") }
     }
 
     fn try_add(self, attribute_option: &Option<Attribute>) -> Self {
@@ -39,13 +65,13 @@ impl CitationBuilder for WikiCitation {
 
     fn add(mut self,  attribute: &Attribute) -> Self {
         let result_option = match attribute {
-            Attribute::Title(val) => Some(format!("|title={}", val.to_string())),
-            Attribute::Authors(vals) => Some(self.handle_authors(vals)),
-            Attribute::Date(val) => Some(format!("|date={}", val.format("%Y-%m-%d").to_string())),
-            Attribute::Language(val) => Some(format!("|language={}", val.to_string())),
-            Attribute::Site(val) => Some(format!("|site={}", val.to_string())),
-            Attribute::Url(val) => Some(format!("|url={}", val.to_string())),
-            Attribute::Journal(val) => Some(format!("|journal={}", val.to_string())),
+            Attribute::Title(val)     => Some(format!("|title={}", val.to_string())),
+            Attribute::Authors(vals)  => Some(self.handle_authors(vals)),
+            Attribute::Date(val)      => Some(format!("|date={}", val.format("%Y-%m-%d").to_string())),
+            Attribute::Language(val)  => Some(format!("|language={}", val.to_string())),
+            Attribute::Site(val)      => Some(format!("|site={}", val.to_string())),
+            Attribute::Url(val)       => Some(format!("|url={}", val.to_string())),
+            Attribute::Journal(val)   => Some(format!("|journal={}", val.to_string())),
             Attribute::Publisher(val) => Some(format!("|publisher={}", val.to_string())),
             _ => None
         };
@@ -69,13 +95,13 @@ pub struct BibTeXCitation {
 }
 impl BibTeXCitation {
     // TODO: Implement
-    fn handle_authors(&self, authors: &Vec<String>) -> String {
+    fn handle_authors(&self, authors: &[Author]) -> String {
         todo!()
     }
 }
 impl CitationBuilder for BibTeXCitation {
     fn new() -> Self {
-        BibTeXCitation { formatted_string: String::from("") }
+        Self { formatted_string: String::from("") }
     }
 
     fn try_add(self, attribute_option: &Option<Attribute>) -> Self {
@@ -117,13 +143,13 @@ pub struct APACitation {
 }
 impl APACitation {
     // TODO: Implement
-    fn handle_authors(&self, authors: &Vec<String>) -> String {
+    fn handle_authors(&self, authors: &[Author]) -> String {
         todo!();
     }
 }
 impl CitationBuilder for APACitation {
     fn new() -> Self {
-        APACitation { formatted_string: String::from("") }
+        Self { formatted_string: String::from("") }
     }
 
     fn try_add(self, attribute_option: &Option<Attribute>) -> Self {
