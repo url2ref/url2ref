@@ -40,14 +40,8 @@ pub fn parse_html_from_file(path: &str) -> Result<HTML> {
     Ok(html)
 }
 
-pub fn parse_date(date_string: String) -> Option<NaiveDate> {
-    // TODO: make this more clean (one liner?)
-    let date_time = DateTime::parse_from_rfc3339(&date_string as &str).ok();
-
-    match date_time {
-        Some(dt) => Some(dt.date_naive()),
-        None => None,
-    }
+pub fn parse_date(date_str: &str) -> Option<NaiveDate> {
+    DateTime::parse_from_rfc3339(date_str).ok().map(|v| v.date_naive())
 }
 
 pub trait AttributeParser {

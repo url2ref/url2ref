@@ -30,7 +30,7 @@ pub fn attribute_type_to_attribute(
         AttributeType::Title => Some(Attribute::Title(attribute_value)),
         AttributeType::Author => panic!("Author should have been handled by specialized method"),
         AttributeType::Date => {
-            let date_option = parse_date(attribute_value);
+            let date_option = parse_date(&attribute_value);
             match date_option {
                 Some(date) => Some(Attribute::Date(date)),
                 None => None,

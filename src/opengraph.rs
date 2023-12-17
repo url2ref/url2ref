@@ -51,7 +51,7 @@ fn attribute_type_to_attribute(
             Some(Attribute::Authors(vec![author]))
         },
         AttributeType::Date   => {
-            let date_option = parse_date(attribute_value);
+            let date_option = parse_date(&attribute_value);
             match date_option {
                 Some(date) => Some(Attribute::Date(date)),
                 None => None,
