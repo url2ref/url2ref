@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::result;
 
 use crate::attribute::{Attribute, AttributeType};
-use crate::generator::{AttributeConfigList, ReferenceGenerationError};
+use crate::generator::{RecipeOptions, ReferenceGenerationError};
 use crate::opengraph::OpenGraph;
 use crate::schema_org::SchemaOrg;
 use chrono::{DateTime, NaiveDate};
@@ -93,7 +93,7 @@ impl AttributeCollection {
     }
 
     // TODO: Implement actual builder pattern without copy
-    pub fn build(&self, config_list: &AttributeConfigList, html: &HTML) -> AttributeCollection {
+    pub fn build(&self, config_list: &RecipeOptions, html: &HTML) -> AttributeCollection {
         let attributes = self.parse_attributes(html, config_list.meta_data_type);
 
         let mut return_collection = self.clone();

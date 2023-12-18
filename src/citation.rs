@@ -67,13 +67,14 @@ impl CitationBuilder for WikiCitation {
 
     fn add(mut self,  attribute: &Attribute) -> Self {
         let result_option = match attribute {
-            Attribute::Title(val)     => Some(format!("|title={}", val.to_string())),
-            Attribute::Authors(vals)  => Some(self.handle_authors(vals)),
-            Attribute::Date(val)      => Some(format!("|date={}", val.format("%Y-%m-%d").to_string())),
-            Attribute::Language(val)  => Some(format!("|language={}", val.to_string())),
-            Attribute::Site(val)      => Some(format!("|site={}", val.to_string())),
-            Attribute::Url(val)       => Some(format!("|url={}", val.to_string())),
-            Attribute::Journal(val)   => Some(format!("|journal={}", val.to_string())),
+            Attribute::Title(val) => Some(format!("|title={}", val.to_string())),
+            Attribute::TranslatedTitle(trans) => Some(format!("|trans-title={} |language={}", trans.text, trans.language)),
+            Attribute::Authors(vals) => Some(self.handle_authors(vals)),
+            Attribute::Date(val) => Some(format!("|date={}", val.format("%Y-%m-%d").to_string())),
+            Attribute::Language(val) => Some(format!("|language={}", val.to_string())),
+            Attribute::Site(val) => Some(format!("|site={}", val.to_string())),
+            Attribute::Url(val) => Some(format!("|url={}", val.to_string())),
+            Attribute::Journal(val) => Some(format!("|journal={}", val.to_string())),
             Attribute::Publisher(val) => Some(format!("|publisher={}", val.to_string())),
             _ => None
         };

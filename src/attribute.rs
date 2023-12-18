@@ -9,7 +9,7 @@ use strum::EnumIter;
 /// attribute types in various metadata formats.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, EnumIter, Debug)]
 pub enum AttributeType {
-   Title, 
+   Title,
    Author, 
    Locale,
    Language,
@@ -24,6 +24,7 @@ pub enum AttributeType {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Attribute {
     Title(String),
+    TranslatedTitle(Translation),
     Authors(Vec<Author>),
     Date(NaiveDate),
     Language(String),
@@ -40,4 +41,12 @@ pub enum Author {
     Person(String),
     Organization(String),
     Generic(String)
+}
+
+/// Translation containing translated text as well as
+/// the language it's in as an ISO 639 language code.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Translation {
+    pub text: String,
+    pub language: String,
 }

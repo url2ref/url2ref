@@ -2,7 +2,7 @@
 
 use url2ref::{Reference, GenerationOptions};
 use url2ref::attribute::{Attribute, Author};
-use url2ref::generator::AttributeConfigList;
+use url2ref::generator::{RecipeOptions, TranslationOptions};
 
 mod utils;
 use utils::{Parser, get_file_pairs, get_expected_results};
@@ -29,8 +29,8 @@ fn check(html_path: &str, expected_results_path: &str) {
 
     for (metadata_parser, expected_attributes) in expected_results.iter() {
         let generation_options = match metadata_parser {
-            Parser::OpenGraph => GenerationOptions::new(vec!(AttributeConfigList::default_opengraph())),
-            Parser::SchemaOrg => GenerationOptions::new(vec!(AttributeConfigList::default_schema_org())),
+            Parser::OpenGraph => GenerationOptions::new(vec!(RecipeOptions::default_opengraph()), TranslationOptions::default()),
+            Parser::SchemaOrg => GenerationOptions::new(vec!(RecipeOptions::default_schema_org()), TranslationOptions::default()),
         };
 
         actual_check(html_path, &expected_attributes, &generation_options);
@@ -55,6 +55,7 @@ fn actual_check(html_path: &str, expected_attributes: &Vec<Attribute>, generatio
     assert!(matches!(reference, Reference::NewsArticle { .. }));
     if let Reference::NewsArticle {
         title,
+        translated_title,
         author,
         date,
         language,

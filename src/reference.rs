@@ -9,6 +9,7 @@ use crate::citation::*;
 pub enum Reference {
     NewsArticle {
         title: Option<Attribute>,
+        translated_title: Option<Attribute>,
         author: Option<Attribute>,
         date: Option<Attribute>,
         language: Option<Attribute>,
@@ -17,6 +18,7 @@ pub enum Reference {
     },
     ScholarlyArticle {
         title: Option<Attribute>,
+        translated_title: Option<Attribute>,
         author: Option<Attribute>,
         date: Option<Attribute>,
         language: Option<Attribute>,
@@ -26,6 +28,7 @@ pub enum Reference {
     },
     GenericReference {
         title: Option<Attribute>,
+        translated_title: Option<Attribute>,
         author: Option<Attribute>,
         date: Option<Attribute>,
         language: Option<Attribute>,
@@ -36,9 +39,10 @@ pub enum Reference {
 impl Reference {
     fn build_citation<T: CitationBuilder>(&self, builder: T) -> String {
         match self {
-            Reference::NewsArticle {title, author, date, language, site, url} => {
+            Reference::NewsArticle {title, translated_title, author, date, language, site, url} => {
                 let formatted_string = builder
                     .try_add(title)
+                    .try_add(translated_title)
                     .try_add(author)
                     .try_add(date)
                     .try_add(language)
@@ -47,9 +51,10 @@ impl Reference {
                     .build();
                 formatted_string
             }
-            Reference::ScholarlyArticle {title, author, date, language, url, journal, publisher} => {
+            Reference::ScholarlyArticle {title, translated_title, author, date, language, url, journal, publisher} => {
                 let formatted_string = builder
                     .try_add(title)
+                    .try_add(translated_title)
                     .try_add(author)
                     .try_add(date)
                     .try_add(language)
@@ -59,9 +64,10 @@ impl Reference {
                     .build();
                 formatted_string
             }
-            Reference::GenericReference {title, author, date, language, site, url} => {
+            Reference::GenericReference {title, translated_title, author, date, language, site, url} => {
                 let formatted_string = builder
                     .try_add(title)
+                    .try_add(translated_title)
                     .try_add(author)
                     .try_add(date)
                     .try_add(language)
