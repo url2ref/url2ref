@@ -86,18 +86,16 @@ fn form_reference_from_file(path: &str, options: &GenerationOptions) -> Result<R
 /// Schema.org metadata.
 fn form_reference(html: &HTML, options: &GenerationOptions) -> Result<Reference> {
     // Generate attributes
-    let mut attribute_collection = AttributeCollection::new();
-
-    for attribute_config_list in options.recipes.iter() {
-        attribute_collection = attribute_collection.build(attribute_config_list, &html);
-    }
+    let attribute_collection = options.recipes.iter()
+        .fold(AttributeCollection::builder(), |builder, x| builder.add_parser(x, &html))
+        .build();
 
     let title = attribute_collection.get_as_attribute(AttributeType::Title);
     let author = attribute_collection.get_as_attribute(AttributeType::Author);
     let date = attribute_collection.get_as_attribute(AttributeType::Date);
     let language = attribute_collection.get_as_attribute(AttributeType::Locale);
     let site = attribute_collection.get_as_attribute(AttributeType::Site);
-    let url_attrib = attribute_collection.get_as_attribute(AttributeType::Url);
+    let url = attribute_collection.get_as_attribute(AttributeType::Url);
 
     // Act according to translation options;
     // if translation fails, None will be the result.
@@ -109,7 +107,7 @@ fn form_reference(html: &HTML, options: &GenerationOptions) -> Result<Reference>
         author: author.cloned(),
         date: date.cloned(),
         language: language.cloned(),
-        url: url_attrib.cloned(),
+        url: url.cloned(),
         site: site.cloned(),
     };
 
