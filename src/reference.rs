@@ -82,9 +82,4 @@ impl Reference {
     pub fn wiki(&self) -> String {
         self.build_citation(WikiCitation::new())
     }
-
-    /// Returns a citation in APA style
-    pub fn apa(&self) -> String {
-        self.build_citation(APACitation::new())
-    }
 }

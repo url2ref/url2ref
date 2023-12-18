@@ -18,8 +18,6 @@ enum CitationFormat {
     Wiki,
     /// Using BibTeX markup
     Bibtex,
-    /// Using the APA style
-    APA,
 }
 
 fn main() {
@@ -31,7 +29,6 @@ fn main() {
     let output = match args.format {
         CitationFormat::Wiki => reference.wiki(),
         CitationFormat::Bibtex => reference.bibtex(),
-        CitationFormat::APA => reference.apa(),
     };
 
     println!("{}", output);

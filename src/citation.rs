@@ -100,6 +100,7 @@ impl BibTeXCitation {
 
         // Creates a string representing an author in a style compatible with BibTeX markup
         fn stringify_author(author: &Author) -> String {
+            let default = |a: &str| format!("{{{}}}", a);
             match author {
                 Author::Person(str) => {
                     let parts: Vec<&str> = str.split_whitespace().collect();
@@ -108,10 +109,10 @@ impl BibTeXCitation {
                             let first_names = first_names.join(" ");
                             format!("{last_name}, {first_names}")
                         }
-                        _ => str.to_string(),
+                        _ => default(str),
                     }
                 },
-                Author::Organization(str) | Author::Generic(str) => str.to_string(),
+                Author::Organization(str) | Author::Generic(str) => default(str),
             }
         }
 
@@ -153,51 +154,6 @@ impl CitationBuilder for BibTeXCitation {
 
     fn build(self) -> String {
         format!("@misc{{ url2ref,\n{}}}", self.formatted_string)
-    }
-}
-
-/// Builds a citation in [APA style].
-///
-/// [APA style]: https://en.wikipedia.org/wiki/APA_style
-pub struct APACitation {
-    formatted_string: String,
-}
-impl APACitation {
-    // TODO: Implement
-    fn handle_authors(&self, authors: &[Author]) -> String {
-        todo!();
-    }
-}
-impl CitationBuilder for APACitation {
-    fn new() -> Self {
-        Self { formatted_string: String::from("") }
-    }
-
-    fn try_add(self, attribute_option: &Option<Attribute>) -> Self {
-        match attribute_option {
-            Some(attribute) => self.add(&attribute),
-            None => self,
-        }
-    }
-
-    fn add(self,  attribute: &Attribute) -> Self {
-        let result_option = match attribute {
-            Attribute::Title(val) => Some(("title", val)),
-            Attribute::Authors(vals) => None, // TODO: Implement
-            Attribute::Date(val) => None, // TODO: Implement
-            Attribute::Language(val) => Some(("language", val)),
-            Attribute::Site(val) => Some(("site", val)),
-            Attribute::Url(val) => Some(("url", val)),
-            Attribute::Journal(val) => Some(("journal", val)),
-            Attribute::Publisher(val) => Some(("publisher", val)),
-            _ => None
-        };
-
-        self
-    }
-
-    fn build(self) -> String {
-        format!("{}", self.formatted_string)
     }
 }
 
