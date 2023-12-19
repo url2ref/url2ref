@@ -27,4 +27,6 @@ jobs:
     - name: Build
       run: cargo build --verbose
     - name: Run tests
+      env:
+        DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
       run: cargo test --verbose

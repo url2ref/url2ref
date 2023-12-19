@@ -1,6 +1,12 @@
-# url2ref &ndash; generate a reference from a web address
+<div align="center">
+  <h1>url2ref</h1>
+
+  <p>
+    <strong>Automatic reference generation for web resources</strong>
+  </p>
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) ![build](https://img.shields.io/github/actions/workflow/status/url2ref/url2ref/build_and_test.yml)
+</div>
 
 ## Motivation
 

@@ -1,126 +1,100 @@
-//! Parser which extracts the metadata to be combined into the final [`Reference`]
+//! Parser which extracts the metadata to be combined into a [`crate::reference::Reference`].
+
 use std::collections::HashMap;
+use std::result;
 
 use crate::attribute::{Attribute, AttributeType};
-use crate::generator::{ReferenceGenerationError, AttributeConfigList};
+use crate::generator::attribute_config::{AttributePriority, AttributeConfig};
+use crate::generator::{MetadataType, ReferenceGenerationError};
 use crate::opengraph::OpenGraph;
 use crate::schema_org::SchemaOrg;
+
 use chrono::{DateTime, NaiveDate};
+use strum::IntoEnumIterator;
 use webpage::{Webpage, WebpageOptions, HTML};
+
+type Result<T> = result::Result<T, ReferenceGenerationError>;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct MetadataKey {
     pub key: &'static str,
 }
 
-#[derive(Clone, Copy)]
-pub enum MetadataType {
-    OpenGraph,
-    SchemaOrg
-}
-
-#[derive(Clone)]
-pub struct StoredAttribute {
-    pub value: Attribute,
-    pub priority: i32
-}
-
 /// Parses the web page into an HTML object using [`webpage`].
-pub fn parse_html(url: &str) -> Result<HTML, ReferenceGenerationError> {
+pub fn parse_html_from_url(url: &str) -> Result<HTML> {
     let html = Webpage::from_url(url, WebpageOptions::default())?.html;
     Ok(html)
 }
 
-pub fn parse_date(date_string: String) -> Option<NaiveDate> {
-    // TODO: make this more clean (one liner?)
-    let date_time = DateTime::parse_from_rfc3339(&date_string as &str).ok();
-
-    match date_time {
-        Some(dt) => Some(dt.date_naive()),
-        None => None,
-    }
+/// Parses the web page into an HTML object using [`webpage`].
+pub fn parse_html_from_file(path: &str) -> Result<HTML> {
+    let html = HTML::from_file(path, None)?;
+    Ok(html)
 }
 
+/// Parse a string into a [`NaiveDate`] object
+pub fn parse_date(date_str: &str) -> Option<NaiveDate> {
+    DateTime::parse_from_rfc3339(date_str).ok().map(|v| v.date_naive())
+}
+
+/// Implemented by parsers of different metadata formats
+/// (Schema.org, Open Graph, etc.)
 pub trait AttributeParser {
-    fn parse_attributes(html: &HTML) -> HashMap<AttributeType, Attribute>;
+    fn parse_attribute(html: &HTML, attribute_type: AttributeType) -> Option<Attribute>;
+}
+
+/// Attempt to parse a single attribute
+fn parse(html: &HTML, attribute_type: AttributeType, formats: &AttributePriority) -> Option<Attribute> {
+    for format in &formats.priority {
+        let attribute = match format {
+            MetadataType::OpenGraph => OpenGraph::parse_attribute(html, attribute_type),
+            MetadataType::SchemaOrg => SchemaOrg::parse_attribute(html, attribute_type)
+        };
+        if attribute.is_some() {
+            return attribute
+        }
+    }
+
+    None
 }
 
 #[derive(Clone)]
 pub struct AttributeCollection {
-    pub attributes: HashMap<AttributeType, StoredAttribute>,
+    pub attributes: HashMap<AttributeType, Attribute>,
 }
 impl AttributeCollection {
-    pub fn new() -> AttributeCollection {
-        AttributeCollection {
-            attributes: HashMap::new(),
-        }
+    /// Initialize an [`AttributeCollection`] from the supplied
+    /// [`AttributeConfig`] and [`HTML`].
+    pub fn initialize(config: &AttributeConfig, html: &HTML) -> Self {
+        Self { attributes: HashMap::new() }.add_all(config, html)
     }
 
-    fn insert(&mut self, internal_key: AttributeType, attribute: StoredAttribute) {
-        self.attributes.insert(internal_key, attribute);
+    /// Retrieves an [`Attribute`] reference from the collection.
+    pub fn get(&self, attribute_type: AttributeType) -> Option<&Attribute> {
+        self.attributes.get(&attribute_type)
     }
 
-    pub fn get(&self, internal_key: AttributeType) -> Option<&StoredAttribute> {
-        self.attributes.get(&internal_key)
+    /// Adds a single [`Attribute`] to the collection.
+    fn add(mut self, attribute_type: AttributeType, config: &AttributeConfig, html: &HTML) -> Self {
+        let priorities = config.get(attribute_type);
+        let attribute = parse(html, attribute_type, &priorities.clone().unwrap_or_default());
+        self.insert_if(attribute_type, attribute);
+
+        self
     }
 
-    fn contains(&self, internal_key: AttributeType) -> bool {
-        self.attributes.contains_key(&internal_key)
+    /// Adds the [`Attribute`]s corresponding to all [`AttributeType`] variants to
+    /// the collection.
+    fn add_all(mut self, config: &AttributeConfig, html: &HTML) -> Self {
+        AttributeType::iter().for_each(|x| {
+            self = self.clone().add(x, config, html);
+        });
+        self
     }
 
-    fn parse_attributes(
-        &self,
-        html: &HTML,
-        meta_data_type: MetadataType,
-    ) -> HashMap<AttributeType, Attribute> {
-        match meta_data_type {
-            MetadataType::OpenGraph => OpenGraph::parse_attributes(html),
-            MetadataType::SchemaOrg => SchemaOrg::parse_attributes(html),
-        }
-    }
-
-    // TODO: Implement actual builder pattern without copy
-    pub fn build(&self, config_list: &AttributeConfigList, html: &HTML) -> AttributeCollection {
-        let attributes = self.parse_attributes(html, config_list.meta_data_type);
-
-        let mut return_collection = self.clone();
-
-        for attribute_config in config_list.list.iter() {
-            let attribute_type = attribute_config.attribute_type;
-
-            let attribute_option = attributes.get(&attribute_type);
-            let priority = attribute_config.priority;
-
-            if let Some(attribute) = attribute_option {
-                let attribute = StoredAttribute {
-                    value: attribute.clone(),
-                    priority: priority,
-                };
-
-                return_collection.insert_if(attribute_type, attribute);
-            };
-        }
-
-        return_collection
-    }
-
-    fn insert_if(&mut self, internal_key: AttributeType, attribute: StoredAttribute) {
-        if !self.contains(internal_key) {
-            self.insert(internal_key, attribute);
-            return;
-        }
-
-        let found_attribute = self.get(internal_key).unwrap();
-        if attribute.priority > found_attribute.priority {
-            self.insert(internal_key, attribute);
-        }
-    }
-
-    pub fn get_as_attribute(&self, attribute_type: AttributeType) -> Option<&Attribute> {
-        let attribute_option = self.get(attribute_type);
-        match attribute_option {
-            Some(attribute) => Some(&attribute.value),
-            None => None
+    fn insert_if(&mut self, attribute_type: AttributeType, attribute: Option<Attribute>) {
+        if attribute.is_some() {
+            self.attributes.insert(attribute_type, attribute.unwrap());
         }
     }
 }
