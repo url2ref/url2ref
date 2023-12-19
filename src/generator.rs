@@ -77,13 +77,13 @@ pub mod attribute_config {
             if self.priority.len() < MetadataType::COUNT && !self.priority.contains(&metadata_type) {
                 self.priority.push(metadata_type);
             }
-            
+
             self
         }
     }
 
     #[derive(Default, Builder, Clone)]
-    #[builder(setter(into, strip_option))]
+    #[builder(setter(into, strip_option), default)]
     pub struct AttributeConfig {
         pub title: Option<AttributePriority>,
         pub authors: Option<AttributePriority>,
@@ -95,7 +95,7 @@ pub mod attribute_config {
         pub journal: Option<AttributePriority>,
         pub publisher: Option<AttributePriority>,
     }
-    
+
     impl AttributeConfig {
         pub fn new(priority: AttributePriority) -> Self {
             AttributeConfigBuilder::default()
@@ -177,7 +177,7 @@ fn translate_title(title: &Option<&Attribute>, options: &TranslationOptions) -> 
     if let Some(Attribute::Title(content)) = title {
         let text = translate(content, &options)?;
         let translation_attribute = Attribute::TranslatedTitle(
-            Translation { 
+            Translation {
                 text,
                 // We can safely unwrap here as the call to translate()
                 // would've already failed if no target language was provided.
@@ -191,8 +191,8 @@ fn translate_title(title: &Option<&Attribute>, options: &TranslationOptions) -> 
 }
 
 /// Translates content according to the provided TranslationOptions.
-fn translate<'a>(content: &'a str, options: &TranslationOptions) -> Result<String> {     
-    let api_key = options.deepl_key.clone().ok_or(ReferenceGenerationError::TranslationError)?;   
+fn translate<'a>(content: &'a str, options: &TranslationOptions) -> Result<String> {
+    let api_key = options.deepl_key.clone().ok_or(ReferenceGenerationError::TranslationError)?;
     let deepl = DeepL::new(api_key);
 
     let texts = TranslatableTextList {

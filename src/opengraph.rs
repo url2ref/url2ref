@@ -1,15 +1,14 @@
 use std::collections::HashMap;
 
-use strum::IntoEnumIterator;
 use webpage::HTML;
 
 use crate::attribute::{Attribute, AttributeType, Author};
 use crate::parser::MetadataKey;
 use crate::parser::{parse_date, AttributeParser};
 
-
 /// Mapping from generic [`AttributeType`] to Open Graph-specific
 /// [`MetadataKey`] instances.
+#[rustfmt::skip]
 pub const fn keys(key: AttributeType) -> &'static [MetadataKey] {
     match key {
         AttributeType::Title    => &[MetadataKey{key: "title"}],
@@ -17,7 +16,7 @@ pub const fn keys(key: AttributeType) -> &'static [MetadataKey] {
         AttributeType::Locale   => &[MetadataKey{key: "locale"}],
         AttributeType::Site     => &[MetadataKey{key: "site_name"}],
         AttributeType::Url      => &[MetadataKey{key: "url"}],
-        AttributeType::Date     => &[MetadataKey{key: "article:published_time"}, 
+        AttributeType::Date     => &[MetadataKey{key: "article:published_time"},
                                      MetadataKey{key: "article:modified_time"},
                                      MetadataKey{key: "updated_time"}],
         AttributeType::Type     => &[MetadataKey{key: "type"}],
@@ -45,47 +44,29 @@ fn attribute_type_to_attribute(
     attribute_value: String,
 ) -> Option<Attribute> {
     match attribute_type {
-        AttributeType::Title  => Some(Attribute::Title(attribute_value)),
+        AttributeType::Title => Some(Attribute::Title(attribute_value)),
         AttributeType::Author => {
             let author = Author::Generic(attribute_value);
             Some(Attribute::Authors(vec![author]))
-        },
-        AttributeType::Date   => {
-            let date_option = parse_date(&attribute_value);
-            match date_option {
-                Some(date) => Some(Attribute::Date(date)),
-                None => None,
-            }
         }
-        AttributeType::Locale   => Some(Attribute::Locale(attribute_value)),
+        AttributeType::Date => {
+            let date = parse_date(&attribute_value)?;
+            Some(Attribute::Date(date))
+        }
+        AttributeType::Locale => Some(Attribute::Locale(attribute_value)),
         AttributeType::Language => Some(Attribute::Language(attribute_value)),
-        AttributeType::Site     => Some(Attribute::Site(attribute_value)),
-        AttributeType::Url      => Some(Attribute::Url(attribute_value)),
-        AttributeType::Type     => None,
+        AttributeType::Site => Some(Attribute::Site(attribute_value)),
+        AttributeType::Url => Some(Attribute::Url(attribute_value)),
+        AttributeType::Type => None,
     }
 }
 
 impl AttributeParser for OpenGraph {
     fn parse_attribute(html: &HTML, attribute_type: AttributeType) -> Option<Attribute> {
-        todo!()
-    }
-
-    fn parse_attributes(html: &HTML) -> HashMap<AttributeType, Attribute> {
-        let mut parsed_opengraph = HashMap::new();
-
         let og = &html.opengraph.properties;
+        let external_keys = keys(attribute_type);
+        let attribute_value = try_find_attribute(&og, external_keys)?;
 
-        for attribute_type in AttributeType::iter() {
-            let external_keys = keys(attribute_type);
-            let attribute_option = try_find_attribute(&og, external_keys);
-
-            if let Some(attribute_value) = attribute_option {
-                let attribute_option = attribute_type_to_attribute(attribute_type, attribute_value);
-
-                Self::insert_if_some(&mut parsed_opengraph, attribute_type, attribute_option);
-            }
-        }
-
-        parsed_opengraph
+        attribute_type_to_attribute(attribute_type, attribute_value)
     }
 }

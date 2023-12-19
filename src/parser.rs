@@ -41,18 +41,6 @@ pub fn parse_date(date_str: &str) -> Option<NaiveDate> {
 /// (Schema.org, Open Graph, etc.)
 pub trait AttributeParser {
     fn parse_attribute(html: &HTML, attribute_type: AttributeType) -> Option<Attribute>;
-
-    fn parse_attributes(html: &HTML) -> HashMap<AttributeType, Attribute>;
-
-    fn insert_if_some(
-        map: &mut HashMap<AttributeType, Attribute>,
-        attribute_type: AttributeType,
-        attribute_option: Option<Attribute>,
-    ) {
-        if let Some(attribute) = attribute_option {
-            map.insert(attribute_type, attribute);
-        }
-    }
 }
 
 /// Attempt to parse a single attribute
@@ -94,7 +82,7 @@ impl AttributeCollection {
 
         self
     }
-    
+
     /// Adds the [`Attribute`]s corresponding to all [`AttributeType`] variants to
     /// the collection.
     fn add_all(mut self, config: &AttributeConfig, html: &HTML) -> Self {
@@ -103,7 +91,7 @@ impl AttributeCollection {
         });
         self
     }
-    
+
     fn insert_if(&mut self, attribute_type: AttributeType, attribute: Option<Attribute>) {
         if attribute.is_some() {
             self.attributes.insert(attribute_type, attribute.unwrap());

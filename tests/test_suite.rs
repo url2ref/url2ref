@@ -68,7 +68,7 @@ fn actual_check(html_path: &str, expected_attributes: &Vec<Attribute>, generatio
     assert!(matches!(reference, Reference::NewsArticle { .. }));
     if let Reference::NewsArticle {
         title,
-        translated_title,
+        translated_title: _,
         author,
         date,
         language,

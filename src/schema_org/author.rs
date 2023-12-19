@@ -72,10 +72,6 @@ fn try_find_author_attribute(
 }
 
 pub fn create_author_attribute(schema_value: &Value, external_keys: &[MetadataKey]) -> Option<Attribute> {
-    let attribute_option = try_find_author_attribute(&schema_value, external_keys);
-    if let Some(attribute_value) = attribute_option {
-        return Some(Attribute::Authors(attribute_value))
-    }
-
-    None
+    let attribute_option = try_find_author_attribute(&schema_value, external_keys)?;
+    Some(Attribute::Authors(attribute_option))
 }
