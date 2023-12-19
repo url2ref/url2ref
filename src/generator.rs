@@ -47,7 +47,6 @@ pub struct TranslationOptions {
 
 pub mod attribute_config {
     use derive_builder::Builder;
-    use strum::EnumCount;
 
     use super::MetadataType;
     use crate::attribute::AttributeType;
@@ -64,21 +63,10 @@ pub mod attribute_config {
         }
     }
     impl AttributePriority {
-        pub fn new() -> Self {
+        pub fn new(priority: &[MetadataType]) -> Self {
             Self {
-                priority: vec!()
+                priority: priority.to_vec()
             }
-        }
-
-        pub fn and_then(mut self, metadata_type: MetadataType) -> Self {
-            // Add only if (1) the length of the priority list is less than the
-            // number of MetadataType variants and (2) if the priority list doesn't
-            // already contain the provided MetadataType variant.
-            if self.priority.len() < MetadataType::COUNT && !self.priority.contains(&metadata_type) {
-                self.priority.push(metadata_type);
-            }
-
-            self
         }
     }
 
@@ -143,7 +131,7 @@ pub fn from_file(html_path: &str, options: &GenerationOptions) -> Result<Referen
 /// Schema.org metadata.
 fn create_reference(html: &HTML, options: &GenerationOptions) -> Result<Reference> {
     // Build attribute collection based on configuration
-    let attribute_collection = AttributeCollection::initialize(&options.config, html);
+    let attribute_collection = AttributeCollection::initialize(&options.attribute_config, html);
 
     let title = attribute_collection.get(AttributeType::Title);
     let author = attribute_collection.get(AttributeType::Author);

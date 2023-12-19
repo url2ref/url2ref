@@ -6,6 +6,7 @@ use std::env::VarError;
 use clap::{Parser, ValueEnum};
 
 use url2ref::generator::TranslationOptions;
+use url2ref::generator::attribute_config::{AttributeConfig, AttributePriority};
 use url2ref::*;
 
 mod env_vars {
@@ -22,8 +23,8 @@ struct CommandLineArgs {
     #[clap(short, long, value_enum, default_value_t=CitationFormat::Wiki)]
     format: CitationFormat,
 
-    #[clap(short, long)]
-    source_lang: String,
+    #[clap(short, long, default_value=None)]
+    metadata_priority: Option<MetadataType>,
 
     #[clap(short, long)]
     target_lang: String,
@@ -38,6 +39,12 @@ enum CitationFormat {
     Wiki,
     /// Using BibTeX markup
     Bibtex,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum MetadataType {
+    Opengraph,
+    Schemaorg
 }
 
 fn load_deepl_key() -> Result<String, VarError> {
@@ -57,7 +64,23 @@ fn main() {
         deepl_key: Some(deepl_key)
     };
 
-    let reference = generate(&query, &GenerationOptions::with_translation(translation_options)).unwrap();
+    let attribute_config = if args.metadata_priority.is_some() {
+        let metadata_type = match args.metadata_priority.unwrap() {
+            MetadataType::Opengraph => generator::MetadataType::OpenGraph,
+            MetadataType::Schemaorg => generator::MetadataType::SchemaOrg,
+        };
+        let attribute_priorities = AttributePriority::new(&[metadata_type]);
+        AttributeConfig::new(attribute_priorities)
+    } else {
+        AttributeConfig::default()
+    };
+
+    let generation_options = GenerationOptions {
+        attribute_config,
+        translation_options
+    };
+
+    let reference = generate(&query, &generation_options).unwrap();
 
     let output = match args.format {
         CitationFormat::Wiki => reference.wiki(),
