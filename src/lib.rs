@@ -31,8 +31,8 @@ type Result<T> = result::Result<T, ReferenceGenerationError>;
 #[derive(Builder)]
 #[builder(setter(into))]
 pub struct GenerationOptions {
-    config: AttributeConfig,
-    translation_options: TranslationOptions,
+    pub config: AttributeConfig,
+    pub translation_options: TranslationOptions,
     // include_archived: bool,
     // user_language: &str,
     // ...

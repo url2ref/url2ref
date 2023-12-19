@@ -4,13 +4,13 @@ use std::collections::HashMap;
 use std::result;
 
 use crate::attribute::{Attribute, AttributeType};
-use crate::generator::attribute_config::AttributePriority;
-use crate::generator::{attribute_config::AttributeConfig, ReferenceGenerationError};
+use crate::generator::attribute_config::{AttributePriority, AttributeConfig};
+use crate::generator::{MetadataType, ReferenceGenerationError};
 use crate::opengraph::OpenGraph;
 use crate::schema_org::SchemaOrg;
 
-use strum::{EnumIter, EnumCount, IntoEnumIterator};
 use chrono::{DateTime, NaiveDate};
+use strum::IntoEnumIterator;
 use webpage::{Webpage, WebpageOptions, HTML};
 
 type Result<T> = result::Result<T, ReferenceGenerationError>;
@@ -18,13 +18,6 @@ type Result<T> = result::Result<T, ReferenceGenerationError>;
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct MetadataKey {
     pub key: &'static str,
-}
-
-#[derive(Default, Clone, Copy, EnumIter, EnumCount)]
-pub enum MetadataType {
-    #[default]
-    OpenGraph,
-    SchemaOrg,
 }
 
 /// Parses the web page into an HTML object using [`webpage`].

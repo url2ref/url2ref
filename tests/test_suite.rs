@@ -1,9 +1,9 @@
 //! Integration testing suite.
 
-use url2ref::Reference;
-use url2ref::generation_options::*;
-use url2ref::attribute::{Attribute, Author};
-use url2ref::generator::{AttributeConfig, TranslationOptions};
+use url2ref::{Reference, GenerationOptions};
+use url2ref::attribute::*;
+use url2ref::generator::*;
+use url2ref::generator::attribute_config::*;
 
 mod utils;
 use utils::{Parser, get_file_pairs, get_expected_results};
@@ -30,8 +30,20 @@ fn check(html_path: &str, expected_results_path: &str) {
 
     for (metadata_parser, expected_attributes) in expected_results.iter() {
         let generation_options = match metadata_parser {
-            Parser::OpenGraph => GenerationOptions::new(vec!(AttributeConfig::default_opengraph()), TranslationOptions::default()),
-            Parser::SchemaOrg => GenerationOptions::new(vec!(AttributeConfig::default_schema_org()), TranslationOptions::default()),
+            Parser::OpenGraph => {
+                let priorities = AttributePriority { priority: vec!(MetadataType::OpenGraph)};
+                GenerationOptions {
+                    config: AttributeConfig::new(priorities),
+                    ..Default::default()
+                }
+            },
+            Parser::SchemaOrg => {
+                let priorities = AttributePriority { priority: vec!(MetadataType::OpenGraph)};
+                GenerationOptions {
+                    config: AttributeConfig::new(priorities),
+                    ..Default::default()
+                }
+            },
         };
 
         actual_check(html_path, &expected_attributes, &generation_options);

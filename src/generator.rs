@@ -1,7 +1,7 @@
 //! Generator responsible for producing a [`Reference`]
 
 use std::result;
-
+use strum::{EnumIter, EnumCount};
 use deepl_api::{DeepL, TranslatableTextList, Error as DeepLError};
 use thiserror::Error;
 use webpage::HTML;
@@ -27,6 +27,13 @@ pub enum ReferenceGenerationError {
     VarError(#[from] std::env::VarError),
 }
 
+#[derive(Default, Clone, Copy, PartialEq, EnumIter, EnumCount)]
+pub enum MetadataType {
+    #[default]
+    OpenGraph,
+    SchemaOrg,
+}
+
 /// User options for title translation.
 #[derive(Clone, Default)]
 pub struct TranslationOptions {
@@ -42,7 +49,8 @@ pub mod attribute_config {
     use derive_builder::Builder;
     use strum::EnumCount;
 
-    use crate::{parser::MetadataType, attribute::AttributeType};
+    use super::MetadataType;
+    use crate::attribute::AttributeType;
 
     #[derive(Clone)]
     pub struct AttributePriority {
