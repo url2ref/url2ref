@@ -26,8 +26,11 @@ struct CommandLineArgs {
     #[clap(short, long, default_value=None)]
     metadata_priority: Option<MetadataType>,
 
-    #[clap(short, long)]
-    target_lang: String,
+    #[clap(short, long, default_value=None, requires("target_lang"))]
+    source_lang: Option<String>,
+
+    #[clap(short, long, default_value=None)]
+    target_lang: Option<String>,
 }
 
 /// Supported citation formats.
@@ -59,8 +62,8 @@ fn main() {
     let deepl_key = load_deepl_key().expect("DEEPL_API_KEY couldn't be loaded");
 
     let translation_options = TranslationOptions {
-        source: Some(args.source_lang),
-        target: Some(args.target_lang),
+        source: args.source_lang,
+        target: args.target_lang,
         deepl_key: Some(deepl_key)
     };
 
