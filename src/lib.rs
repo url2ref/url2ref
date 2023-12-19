@@ -12,6 +12,7 @@
 //! [MediaWiki]: https://www.mediawiki.org/wiki/Help:Cite
 
 use std::result;
+use derive_builder::Builder;
 
 pub mod attribute;
 pub mod generator;
@@ -21,14 +22,16 @@ mod citation;
 mod parser;
 mod reference;
 
-use generator::{RecipeOptions, TranslationOptions, ReferenceGenerationError};
+use generator::{attribute_config::{AttributeConfig, AttributeConfigBuilder}, TranslationOptions, ReferenceGenerationError};
 pub use reference::*;
 
 type Result<T> = result::Result<T, ReferenceGenerationError>;
 
 /// Options for reference generation.
+#[derive(Builder)]
+#[builder(setter(into))]
 pub struct GenerationOptions {
-    recipes: Vec<RecipeOptions>,
+    config: AttributeConfig,
     translation_options: TranslationOptions,
     // include_archived: bool,
     // user_language: &str,
@@ -36,37 +39,41 @@ pub struct GenerationOptions {
 }
 impl Default for GenerationOptions {
     fn default() -> Self {
-        let recipes = vec!(RecipeOptions::default_schema_org(), RecipeOptions::default_opengraph());
+        let config = AttributeConfigBuilder::default()
+            .build()
+            .unwrap();
         let translation_options = TranslationOptions::default();
 
         Self { 
-            recipes,
+            config,
             translation_options,
         }
     }
 }
-impl<'a> GenerationOptions {
-    pub fn new(recipes: Vec<RecipeOptions>, translation_options: TranslationOptions) -> Self {
+impl GenerationOptions {
+    pub fn new(config: AttributeConfig, translation_options: TranslationOptions) -> Self {
         Self { 
-            recipes,
+            config,
             translation_options,
         }
     }
 
     pub fn with_translation(translation_options: TranslationOptions) -> Self {
-        let recipes = vec!(RecipeOptions::default_schema_org(), RecipeOptions::default_opengraph());
+        let config = AttributeConfigBuilder::default()
+            .build()
+            .unwrap();
 
         Self {
-            recipes,
+            config,
             translation_options
         }
     }
 }
 
 pub fn generate(url: &str, options: &GenerationOptions) -> Result<Reference> {
-    generator::generate(url, options)
+    generator::from_url(url, options)
 }
 
 pub fn generate_from_file(path: &str, options: &GenerationOptions) -> Result<Reference> {
-    generator::generate_from_file(path, options)
+    generator::from_file(path, options)
 }

@@ -3,12 +3,11 @@
 use std::result;
 
 use deepl_api::{DeepL, TranslatableTextList, Error as DeepLError};
-use strum::IntoEnumIterator;
 use thiserror::Error;
 use webpage::HTML;
 
 use crate::attribute::{Attribute, AttributeType, Translation};
-use crate::parser::{parse_html_from_file, parse_html_from_url, AttributeCollection, MetadataType};
+use crate::parser::{parse_html_from_file, parse_html_from_url, AttributeCollection};
 use crate::reference::Reference;
 use crate::GenerationOptions;
 
@@ -29,7 +28,7 @@ pub enum ReferenceGenerationError {
 }
 
 /// User options for title translation.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct TranslationOptions {
     /// Contains an ISO 639 language code. If None, source language is guessed
     pub source: Option<String>,
@@ -39,56 +38,88 @@ pub struct TranslationOptions {
     pub deepl_key: Option<String>,
 }
 
-pub struct AttributeConfig {
-    pub attribute_type: AttributeType,
-    pub priority: i32,
-}
+pub mod attribute_config {
+    use derive_builder::Builder;
+    use strum::EnumCount;
 
-pub struct RecipeOptions {
-    pub list: Vec<AttributeConfig>,
-    pub meta_data_type: MetadataType,
-}
+    use crate::{parser::MetadataType, attribute::AttributeType};
 
-impl RecipeOptions {
-    fn default_list() -> Vec<AttributeConfig> {
-        AttributeType::iter()
-            .map(|attribute_type| AttributeConfig { attribute_type, priority: 1 })
-            .collect()
+    #[derive(Clone)]
+    pub struct AttributePriority {
+        pub priority: [MetadataType; MetadataType::COUNT], // TODO: Re-think this type
+        count: i32
     }
-
-    pub fn default_opengraph() -> RecipeOptions {
-        RecipeOptions {
-            list: Self::default_list(),
-            meta_data_type: MetadataType::OpenGraph,
+    impl Default for AttributePriority {
+        fn default() -> Self {
+            Self {
+                priority: [MetadataType::SchemaOrg, MetadataType::OpenGraph],
+                count: MetadataType::COUNT as i32
+            }
+        }
+    }
+    impl AttributePriority {
+        pub fn and_then(mut self, metadata_type: MetadataType) -> Self {
+            self.priority[self.count as usize] = metadata_type;
+            self.count += 1;
+             
+            self
         }
     }
 
-    pub fn default_schema_org() -> RecipeOptions {
-        RecipeOptions {
-            list: Self::default_list(),
-            meta_data_type: MetadataType::SchemaOrg,
+    #[derive(Default, Builder, Clone)]
+    #[builder(setter(into, strip_option))]
+    pub struct AttributeConfig {
+        pub title: Option<AttributePriority>,
+        pub authors: Option<AttributePriority>,
+        pub date: Option<AttributePriority>,
+        pub language: Option<AttributePriority>,
+        pub locale: Option<AttributePriority>,
+        pub site: Option<AttributePriority>,
+        pub url: Option<AttributePriority>,
+        pub journal: Option<AttributePriority>,
+        pub publisher: Option<AttributePriority>,
+    }
+    
+    type P = Option<AttributePriority>;
+    impl AttributeConfig {
+        pub fn new(title: P, authors: P, date: P, language: P, locale: P, site: P, url: P, journal: P, publisher: P) -> Self {
+            Self {
+                title, authors, date, language, locale, site, url, journal, publisher
+            }
+        }
+
+        pub fn get(&self, attribute_type: AttributeType) -> &Option<AttributePriority> {
+            match attribute_type {
+                AttributeType::Title    => &self.title,
+                AttributeType::Author   => &self.authors,
+                AttributeType::Date     => &self.date,
+                AttributeType::Language => &self.language,
+                AttributeType::Locale   => &self.locale,
+                AttributeType::Site     => &self.site,
+                AttributeType::Url      => &self.url,
+                AttributeType::Type     => &None // TODO: Decide future of AttributeType::Type
+            }
         }
     }
 }
 
-fn form_reference_from_url(url: &str, options: &GenerationOptions) -> Result<Reference> {
+/// Generates a [`Reference`] from a URL.
+pub fn from_url(url: &str, options: &GenerationOptions) -> Result<Reference> {
     let html = parse_html_from_url(url)?;
-    form_reference(&html, options)
+    create_reference(&html, &options)
 }
 
-fn form_reference_from_file(path: &str, options: &GenerationOptions) -> Result<Reference> {
-    let html = parse_html_from_file(path)?;
-    form_reference(&html, options)
+/// Generates a [`Reference`] from raw HTML as read from a file.
+pub fn from_file(html_path: &str, options: &GenerationOptions) -> Result<Reference> {
+    let html = parse_html_from_file(html_path)?;
+    create_reference(&html, &options)
 }
-
 
 /// Create [`Reference`] by combining the extracted Open Graph and
 /// Schema.org metadata.
-fn form_reference(html: &HTML, options: &GenerationOptions) -> Result<Reference> {
-    // Generate attributes
-    let attribute_collection = options.recipes.iter()
-        .fold(AttributeCollection::builder(), |builder, x| builder.add_parser(x, &html))
-        .build();
+fn create_reference(html: &HTML, options: &GenerationOptions) -> Result<Reference> {
+    // Build attribute collection based on configuration
+    let attribute_collection = AttributeCollection::builder(html, &options.config).add_all().build();
 
     let title = attribute_collection.get_as_attribute(AttributeType::Title);
     let author = attribute_collection.get_as_attribute(AttributeType::Author);
@@ -112,22 +143,6 @@ fn form_reference(html: &HTML, options: &GenerationOptions) -> Result<Reference>
     };
 
     Ok(reference)
-}
-
-/// Generate a [`Reference`] from a URL string.
-pub fn generate(url: &str, options: &GenerationOptions) -> Result<Reference> {
-    // Parse the HTML to gain access to Schema.org and Open Graph metadata
-    let reference = form_reference_from_url(url, options);
-
-    reference
-}
-
-/// Generate a [`Reference`] from a raw HTML string read from a file.
-pub fn generate_from_file(path: &str, options: &GenerationOptions) -> Result<Reference> {
-    // Parse the HTML to gain access to Schema.org and Open Graph metadata
-    let reference = form_reference_from_file(path, options);
-
-    reference
 }
 
 /// Attempts to translate the provided [`Attribute::Title`].

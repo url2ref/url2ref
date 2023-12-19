@@ -66,6 +66,10 @@ fn attribute_type_to_attribute(
 }
 
 impl AttributeParser for OpenGraph {
+    fn parse_attribute(html: &HTML, attribute_type: AttributeType) -> Option<Attribute> {
+        todo!()
+    }
+
     fn parse_attributes(html: &HTML) -> HashMap<AttributeType, Attribute> {
         let mut parsed_opengraph = HashMap::new();
 

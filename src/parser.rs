@@ -3,9 +3,12 @@ use std::collections::HashMap;
 use std::result;
 
 use crate::attribute::{Attribute, AttributeType};
-use crate::generator::{RecipeOptions, ReferenceGenerationError};
+use crate::generator::attribute_config::AttributePriority;
+use crate::generator::{attribute_config::AttributeConfig, ReferenceGenerationError};
 use crate::opengraph::OpenGraph;
 use crate::schema_org::SchemaOrg;
+
+use strum::{EnumIter, EnumCount, IntoEnumIterator};
 use chrono::{DateTime, NaiveDate};
 use webpage::{Webpage, WebpageOptions, HTML};
 
@@ -16,16 +19,11 @@ pub struct MetadataKey {
     pub key: &'static str,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Default, Clone, Copy, EnumIter, EnumCount)]
 pub enum MetadataType {
+    #[default]
     OpenGraph,
     SchemaOrg,
-}
-
-#[derive(Clone)]
-pub struct StoredAttribute {
-    pub value: Attribute,
-    pub priority: i32,
 }
 
 /// Parses the web page into an HTML object using [`webpage`].
@@ -40,11 +38,16 @@ pub fn parse_html_from_file(path: &str) -> Result<HTML> {
     Ok(html)
 }
 
+/// Parse a string into a [`NaiveDate`] object
 pub fn parse_date(date_str: &str) -> Option<NaiveDate> {
     DateTime::parse_from_rfc3339(date_str).ok().map(|v| v.date_naive())
 }
 
+/// Implemented by parsers of different metadata formats
+/// (Schema.org, Open Graph, etc.)
 pub trait AttributeParser {
+    fn parse_attribute(html: &HTML, attribute_type: AttributeType) -> Option<Attribute>;
+
     fn parse_attributes(html: &HTML) -> HashMap<AttributeType, Attribute>;
 
     fn insert_if_some(
@@ -58,80 +61,82 @@ pub trait AttributeParser {
     }
 }
 
-pub struct AttributeCollectionBuilder {
-    attributes: HashMap<AttributeType, StoredAttribute>,
-}
-
-impl AttributeCollectionBuilder {
-    pub fn build(&self) -> AttributeCollection {
-        AttributeCollection {
-            attributes: self.attributes.clone()
+/// Attempt to parse a single attribute
+fn parse(html: &HTML, attribute_type: AttributeType, formats: &AttributePriority) -> Option<Attribute> {
+    for format in &formats.priority {
+        let attribute = match format {
+            MetadataType::OpenGraph => OpenGraph::parse_attribute(html, attribute_type),
+            MetadataType::SchemaOrg => SchemaOrg::parse_attribute(html, attribute_type)
+        };
+        if attribute.is_some() {
+            return attribute
         }
     }
 
-    // TODO: Implement actual builder pattern without copy
-    pub fn add_parser(mut self, config_list: &RecipeOptions, html: &HTML) -> Self {
-        let attributes = self.parse_attributes(html, config_list.meta_data_type);
+    None
+}
 
-        for attribute_config in config_list.list.iter() {
-            let attribute_type = attribute_config.attribute_type;
+#[derive(Clone)]
+pub struct AttributeCollectionBuilder<'a> {
+    attributes: HashMap<AttributeType, Attribute>,
+    config: &'a AttributeConfig,
+    html: &'a HTML,
+}
 
-            let attribute_option = attributes.get(&attribute_type);
-            let priority = attribute_config.priority;
-
-            if let Some(attribute) = attribute_option {
-                let attribute = StoredAttribute {
-                    value: attribute.clone(),
-                    priority: priority,
-                };
-
-                self.insert_if(attribute_type, attribute);
-            };
+impl AttributeCollectionBuilder<'_> {
+    pub fn build(&self) -> AttributeCollection {
+        AttributeCollection {
+            attributes: self.attributes.clone(),
         }
+    }
+
+    // Add a single attribute
+    pub fn add(mut self, attribute_type: AttributeType) -> Self {
+        // Determine priority of metadata formats
+        let priority = self.config.get(attribute_type);
+
+        // Attempt to fetch attribute
+        let attribute = parse(self.html, attribute_type, &priority.clone().unwrap_or_default());
+
+        // Insert attribute
+        self.insert_if(attribute_type, attribute);
 
         self
     }
     
-    fn parse_attributes(
-        &self,
-        html: &HTML,
-        meta_data_type: MetadataType,
-    ) -> HashMap<AttributeType, Attribute> {
-        match meta_data_type {
-            MetadataType::OpenGraph => OpenGraph::parse_attributes(html),
-            MetadataType::SchemaOrg => SchemaOrg::parse_attributes(html),
-        }
+    // TODO: Actually, this shows that the whole collection can be built with
+    // a one-liner given a config and html. So maybe just create a ::new(html, config)
+    // function with this functionality?
+    pub fn add_all(self) -> Self {
+        AttributeType::iter().fold(self.clone(), |s, x| s.add(x));
+
+        self
     }
 
-    fn insert_if(&mut self, internal_key: AttributeType, attribute: StoredAttribute) {
-        if !self.attributes.contains_key(&internal_key) {
-            self.attributes.insert(internal_key, attribute);
-            return;
-        }
-
-        let found_attribute = self.attributes.get(&internal_key).unwrap();
-        if attribute.priority > found_attribute.priority {
-            self.attributes.insert(internal_key, attribute);
+    fn insert_if(&mut self, internal_key: AttributeType, attribute: Option<Attribute>) {
+        if attribute.is_some() {
+            self.attributes.insert(internal_key, attribute.unwrap());
         }
     }
-    
 }
 
 #[derive(Clone)]
 pub struct AttributeCollection {
-    pub attributes: HashMap<AttributeType, StoredAttribute>,
+    pub attributes: HashMap<AttributeType, Attribute>,
 }
 impl AttributeCollection {
-    pub fn builder() -> AttributeCollectionBuilder {
+    pub fn builder<'a>(html: &'a HTML, config: &'a AttributeConfig) -> AttributeCollectionBuilder<'a> {
         AttributeCollectionBuilder {
             attributes: HashMap::new(),
+            config,
+            html,
         }
     }
 
     pub fn get_as_attribute(&self, attribute_type: AttributeType) -> Option<&Attribute> {
         let attribute_option = self.attributes.get(&attribute_type);
         match attribute_option {
-            Some(attribute) => Some(&attribute.value),
+            Some(attribute) => Some(&attribute),
             None => None,
         }
     }
