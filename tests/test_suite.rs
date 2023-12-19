@@ -32,14 +32,14 @@ fn check(html_path: &str, expected_results_path: &str) {
             MetadataType::OpenGraph => {
                 let priorities = AttributePriority { priority: vec!(MetadataType::OpenGraph)};
                 GenerationOptions {
-                    config: AttributeConfig::new(priorities),
+                    attribute_config: AttributeConfig::new(priorities),
                     ..Default::default()
                 }
             },
             MetadataType::SchemaOrg => {
                 let priorities = AttributePriority { priority: vec!(MetadataType::SchemaOrg)};
                 GenerationOptions {
-                    config: AttributeConfig::new(priorities),
+                    attribute_config: AttributeConfig::new(priorities),
                     ..Default::default()
                 }
             },

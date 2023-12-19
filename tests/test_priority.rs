@@ -13,7 +13,7 @@ fn check(html_path: &str, expected_results_path: &str, order: Vec<MetadataType>)
     let config = AttributeConfig::new(AttributePriority { priority: order });
 
     let options = GenerationOptions {
-        config: config,
+        attribute_config: config,
         ..Default::default()
     };
 

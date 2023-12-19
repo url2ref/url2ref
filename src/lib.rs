@@ -31,7 +31,7 @@ type Result<T> = result::Result<T, ReferenceGenerationError>;
 #[derive(Builder)]
 #[builder(setter(into))]
 pub struct GenerationOptions {
-    pub config: AttributeConfig,
+    pub attribute_config: AttributeConfig,
     pub translation_options: TranslationOptions,
     // include_archived: bool,
     // user_language: &str,
@@ -39,33 +39,22 @@ pub struct GenerationOptions {
 }
 impl Default for GenerationOptions {
     fn default() -> Self {
-        let config = AttributeConfigBuilder::default()
+        let attribute_config = AttributeConfigBuilder::default()
             .build()
             .unwrap();
         let translation_options = TranslationOptions::default();
 
         Self { 
-            config,
+            attribute_config,
             translation_options,
         }
     }
 }
 impl GenerationOptions {
-    pub fn new(config: AttributeConfig, translation_options: TranslationOptions) -> Self {
+    pub fn new(attribute_config: AttributeConfig, translation_options: TranslationOptions) -> Self {
         Self { 
-            config,
+            attribute_config,
             translation_options,
-        }
-    }
-
-    pub fn with_translation(translation_options: TranslationOptions) -> Self {
-        let config = AttributeConfigBuilder::default()
-            .build()
-            .unwrap();
-
-        Self {
-            config,
-            translation_options
         }
     }
 }
