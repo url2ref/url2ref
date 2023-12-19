@@ -46,22 +46,30 @@ pub mod attribute_config {
 
     #[derive(Clone)]
     pub struct AttributePriority {
-        pub priority: [MetadataType; MetadataType::COUNT], // TODO: Re-think this type
-        count: i32
+        pub priority: Vec<MetadataType>
     }
     impl Default for AttributePriority {
         fn default() -> Self {
             Self {
-                priority: [MetadataType::SchemaOrg, MetadataType::OpenGraph],
-                count: MetadataType::COUNT as i32
+                priority: vec!(MetadataType::SchemaOrg, MetadataType::OpenGraph),
             }
         }
     }
     impl AttributePriority {
+        pub fn new() -> Self {
+            Self {
+                priority: vec!()
+            }
+        }
+
         pub fn and_then(mut self, metadata_type: MetadataType) -> Self {
-            self.priority[self.count as usize] = metadata_type;
-            self.count += 1;
-             
+            // Add only if (1) the length of the priority list is less than the
+            // number of MetadataType variants and (2) if the priority list doesn't
+            // already contain the provided MetadataType variant.
+            if self.priority.len() < MetadataType::COUNT && !self.priority.contains(&metadata_type) {
+                self.priority.push(metadata_type);
+            }
+            
             self
         }
     }
