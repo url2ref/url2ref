@@ -27,7 +27,7 @@ pub enum ReferenceGenerationError {
     VarError(#[from] std::env::VarError),
 }
 
-#[derive(Default, Clone, Copy, PartialEq, EnumIter, EnumCount)]
+#[derive(Default, Clone, Copy, PartialEq, EnumIter, EnumCount, Eq, Hash)]
 pub enum MetadataType {
     #[default]
     OpenGraph,
