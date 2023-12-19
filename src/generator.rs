@@ -80,12 +80,20 @@ pub mod attribute_config {
         pub publisher: Option<AttributePriority>,
     }
     
-    type P = Option<AttributePriority>;
     impl AttributeConfig {
-        pub fn new(title: P, authors: P, date: P, language: P, locale: P, site: P, url: P, journal: P, publisher: P) -> Self {
-            Self {
-                title, authors, date, language, locale, site, url, journal, publisher
-            }
+        pub fn new(priority: AttributePriority) -> Self {
+            AttributeConfigBuilder::default()
+                .title(priority.clone())
+                .authors(priority.clone())
+                .date(priority.clone())
+                .language(priority.clone())
+                .locale(priority.clone())
+                .site(priority.clone())
+                .url(priority.clone())
+                .journal(priority.clone())
+                .publisher(priority.clone())
+                .build()
+                .unwrap()
         }
 
         pub fn get(&self, attribute_type: AttributeType) -> &Option<AttributePriority> {
