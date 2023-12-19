@@ -38,7 +38,7 @@ fn check(html_path: &str, expected_results_path: &str) {
                 }
             },
             Parser::SchemaOrg => {
-                let priorities = AttributePriority { priority: vec!(MetadataType::OpenGraph)};
+                let priorities = AttributePriority { priority: vec!(MetadataType::SchemaOrg)};
                 GenerationOptions {
                     config: AttributeConfig::new(priorities),
                     ..Default::default()
