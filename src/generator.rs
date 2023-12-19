@@ -119,14 +119,14 @@ pub fn from_file(html_path: &str, options: &GenerationOptions) -> Result<Referen
 /// Schema.org metadata.
 fn create_reference(html: &HTML, options: &GenerationOptions) -> Result<Reference> {
     // Build attribute collection based on configuration
-    let attribute_collection = AttributeCollection::builder(html, &options.config).add_all().build();
+    let attribute_collection = AttributeCollection::initialize(&options.config, html);
 
-    let title = attribute_collection.get_as_attribute(AttributeType::Title);
-    let author = attribute_collection.get_as_attribute(AttributeType::Author);
-    let date = attribute_collection.get_as_attribute(AttributeType::Date);
-    let language = attribute_collection.get_as_attribute(AttributeType::Locale);
-    let site = attribute_collection.get_as_attribute(AttributeType::Site);
-    let url = attribute_collection.get_as_attribute(AttributeType::Url);
+    let title = attribute_collection.get(AttributeType::Title);
+    let author = attribute_collection.get(AttributeType::Author);
+    let date = attribute_collection.get(AttributeType::Date);
+    let language = attribute_collection.get(AttributeType::Locale);
+    let site = attribute_collection.get(AttributeType::Site);
+    let url = attribute_collection.get(AttributeType::Url);
 
     // Act according to translation options;
     // if translation fails, None will be the result.

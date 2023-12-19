@@ -1,4 +1,5 @@
-//! Parser which extracts the metadata to be combined into the final [`Reference`]
+//! Parser which extracts the metadata to be combined into a [`crate::reference::Reference`].
+
 use std::collections::HashMap;
 use std::result;
 
@@ -77,67 +78,42 @@ fn parse(html: &HTML, attribute_type: AttributeType, formats: &AttributePriority
 }
 
 #[derive(Clone)]
-pub struct AttributeCollectionBuilder<'a> {
-    attributes: HashMap<AttributeType, Attribute>,
-    config: &'a AttributeConfig,
-    html: &'a HTML,
+pub struct AttributeCollection {
+    pub attributes: HashMap<AttributeType, Attribute>,
 }
-
-impl AttributeCollectionBuilder<'_> {
-    pub fn build(&self) -> AttributeCollection {
-        AttributeCollection {
-            attributes: self.attributes.clone(),
-        }
+impl AttributeCollection {
+    /// Initialize an [`AttributeCollection`] from the supplied
+    /// [`AttributeConfig`] and [`HTML`].
+    pub fn initialize(config: &AttributeConfig, html: &HTML) -> Self {
+        Self { attributes: HashMap::new() }.add_all(config, html)
     }
 
-    // Add a single attribute
-    pub fn add(mut self, attribute_type: AttributeType) -> Self {
-        // Determine priority of metadata formats
-        let priority = self.config.get(attribute_type);
+    /// Retrieves an [`Attribute`] reference from the collection.
+    pub fn get(&self, attribute_type: AttributeType) -> Option<&Attribute> {
+        self.attributes.get(&attribute_type)
+    }
 
-        // Attempt to fetch attribute
-        let attribute = parse(self.html, attribute_type, &priority.clone().unwrap_or_default());
-
-        // Insert attribute
+    /// Adds a single [`Attribute`] to the collection.
+    fn add(mut self, attribute_type: AttributeType, config: &AttributeConfig, html: &HTML) -> Self {
+        let priorities = config.get(attribute_type);
+        let attribute = parse(html, attribute_type, &priorities.clone().unwrap_or_default());
         self.insert_if(attribute_type, attribute);
 
         self
     }
     
-    // TODO: Actually, this shows that the whole collection can be built with
-    // a one-liner given a config and html. So maybe just create a ::new(html, config)
-    // function with this functionality?
-    pub fn add_all(self) -> Self {
-        AttributeType::iter().fold(self.clone(), |s, x| s.add(x));
-
+    /// Adds the [`Attribute`]s corresponding to all [`AttributeType`] variants to
+    /// the collection.
+    fn add_all(mut self, config: &AttributeConfig, html: &HTML) -> Self {
+        AttributeType::iter().for_each(|x| {
+            self = self.clone().add(x, config, html);
+        });
         self
     }
-
-    fn insert_if(&mut self, internal_key: AttributeType, attribute: Option<Attribute>) {
+    
+    fn insert_if(&mut self, attribute_type: AttributeType, attribute: Option<Attribute>) {
         if attribute.is_some() {
-            self.attributes.insert(internal_key, attribute.unwrap());
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct AttributeCollection {
-    pub attributes: HashMap<AttributeType, Attribute>,
-}
-impl AttributeCollection {
-    pub fn builder<'a>(html: &'a HTML, config: &'a AttributeConfig) -> AttributeCollectionBuilder<'a> {
-        AttributeCollectionBuilder {
-            attributes: HashMap::new(),
-            config,
-            html,
-        }
-    }
-
-    pub fn get_as_attribute(&self, attribute_type: AttributeType) -> Option<&Attribute> {
-        let attribute_option = self.attributes.get(&attribute_type);
-        match attribute_option {
-            Some(attribute) => Some(&attribute),
-            None => None,
+            self.attributes.insert(attribute_type, attribute.unwrap());
         }
     }
 }
