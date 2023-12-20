@@ -3,14 +3,15 @@
 use std::collections::HashMap;
 use std::result;
 
-use crate::attribute::{Attribute, AttributeType};
+use crate::attribute::{Attribute, AttributeType, Date};
 use crate::doi::{Doi, self};
 use crate::generator::attribute_config::{AttributePriority, AttributeConfig};
 use crate::generator::{MetadataType, ReferenceGenerationError};
 use crate::opengraph::OpenGraph;
 use crate::schema_org::SchemaOrg;
 
-use chrono::{DateTime, NaiveDate};
+use biblatex::Bibliography;
+use chrono::{DateTime, TimeZone, Utc};
 use strum::IntoEnumIterator;
 use webpage::{Webpage, WebpageOptions, HTML};
 
@@ -23,21 +24,19 @@ pub struct MetadataKey {
 
 pub struct ParseInfo {
     pub html: HTML,
-    pub doi_response: Option<String>
+    pub bibliography: Option<Bibliography>
 }
 
 impl ParseInfo {
 
     pub fn from_url(url: &str) -> Result<ParseInfo> {
         let html = parse_html_from_url(url)?;
-
-        let found_doi = doi::try_find_doi_in_html(&html);
-        let doi_response = doi::send_doi_request(found_doi.as_deref());
+        let bib = doi::try_doi_to_bib(&html);
 
         Ok(
         ParseInfo {
             html: html,
-            doi_response: doi_response.ok()
+            bibliography: bib.ok()
         })
 
     }
@@ -48,7 +47,7 @@ impl ParseInfo {
         Ok(
         ParseInfo {
             html: html,
-            doi_response: None
+            bibliography: None
         })
     }
 }
@@ -66,8 +65,11 @@ pub fn parse_html_from_file(path: &str) -> Result<HTML> {
 }
 
 /// Parse a string into a [`NaiveDate`] object
-pub fn parse_date(date_str: &str) -> Option<NaiveDate> {
-    DateTime::parse_from_rfc3339(date_str).ok().map(|v| v.date_naive())
+pub fn parse_date(date_str: &str) -> Option<Date> {
+    let dt = DateTime::parse_from_rfc3339(date_str).ok()?;
+    let dt_utc = Utc.from_utc_datetime(&dt.naive_utc());
+
+    Some(Date::DateTime(dt_utc))
 }
 
 /// Implemented by parsers of different metadata formats

@@ -1,12 +1,12 @@
 //! Generator responsible for producing a [`Reference`]
 
 use std::result;
-use std::string::FromUtf8Error;
 use strum::{EnumIter, EnumCount};
 use deepl_api::{DeepL, TranslatableTextList, Error as DeepLError};
 use thiserror::Error;
 
 use crate::attribute::{Attribute, AttributeType, Translation};
+use crate::doi::DoiError;
 use crate::parser::{AttributeCollection, ParseInfo};
 use crate::reference::Reference;
 use crate::GenerationOptions;
@@ -29,14 +29,8 @@ pub enum ReferenceGenerationError {
     #[error("Environment variable not found")]
     VarError(#[from] std::env::VarError),
 
-    #[error("Could not generate from DOI")]
-    CurlDoiError(#[from] curl::Error),
-
-    #[error("No DOI was found")]
-    DoiError,
-
-    #[error("Invalid UTF8")]
-    Utf8Error(#[from] FromUtf8Error)
+    #[error("Retrieving DOI failed")]
+    DoiError(#[from] DoiError),
 }
 
 #[derive(Default, Clone, Copy, PartialEq, EnumIter, EnumCount, Eq, Hash)]
@@ -72,7 +66,7 @@ pub mod attribute_config {
     impl Default for AttributePriority {
         fn default() -> Self {
             Self {
-                priority: vec!(MetadataType::Doi),
+                priority: vec!(MetadataType::SchemaOrg, MetadataType::OpenGraph),
             }
         }
     }
@@ -107,6 +101,7 @@ pub mod attribute_config {
         pub url: Option<AttributePriority>,
         pub journal: Option<AttributePriority>,
         pub publisher: Option<AttributePriority>,
+        pub institution: Option<AttributePriority>,
         pub volume: Option<AttributePriority>,
     }
 
@@ -128,17 +123,18 @@ pub mod attribute_config {
 
         pub fn get(&self, attribute_type: AttributeType) -> &Option<AttributePriority> {
             match attribute_type {
-                AttributeType::Title     => &self.title,
-                AttributeType::Author    => &self.authors,
-                AttributeType::Date      => &self.date,
-                AttributeType::Language  => &self.language,
-                AttributeType::Locale    => &self.locale,
-                AttributeType::Site      => &self.site,
-                AttributeType::Url       => &self.url,
-                AttributeType::Type      => &None, // TODO: Decide future of AttributeType::Type
-                AttributeType::Journal   => &self.journal,
-                AttributeType::Publisher => &self.publisher,
-                AttributeType::Volume    => &self.volume,
+                AttributeType::Title       => &self.title,
+                AttributeType::Author      => &self.authors,
+                AttributeType::Date        => &self.date,
+                AttributeType::Language    => &self.language,
+                AttributeType::Locale      => &self.locale,
+                AttributeType::Site        => &self.site,
+                AttributeType::Url         => &self.url,
+                AttributeType::Type        => &None, // TODO: Decide future of AttributeType::Type
+                AttributeType::Journal     => &self.journal,
+                AttributeType::Publisher   => &self.publisher,
+                AttributeType::Volume      => &self.volume,
+                AttributeType::Institution => &self.institution,
             }
         }
     }

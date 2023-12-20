@@ -1,10 +1,11 @@
 //! Common utilities for integration testing.
 
+use chrono::{DateTime, Utc, TimeZone};
 use serde_yaml::{from_reader, Mapping, Value};
 use std::{collections::HashMap, fs::read_dir, fs::File, path::PathBuf};
 
 use url2ref::{
-    attribute::{Attribute, Author},
+    attribute::{Attribute, Author, Date},
     GenerationOptions, Reference,
     generator::MetadataType
 };
@@ -46,15 +47,25 @@ pub fn get_expected_results(path: &str) -> HashMap<MetadataType, Vec<Attribute>>
     expected_attributes
 }
 
+fn parse_date(date_str: &str) -> Date {
+    let dt_opt = DateTime::parse_from_rfc3339(date_str).ok();
+    if let Some(dt) = dt_opt {
+        let dt_utc = Utc.from_utc_datetime(&dt.naive_utc());
+        return Date::DateTime(dt_utc)
+    }
+
+    println!("{:?}", date_str);
+    let naive_date = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d")
+        .expect("No valid conversion of date string found");
+    Date::YearMonthDay(naive_date)
+}
+
 pub fn string_to_attribute(field: &String, value: &String) -> Attribute {
     match field.as_str() {
         "title" => Attribute::Title(value.clone()),
         "author" => Attribute::Authors(vec![Author::Generic(value.clone())]),
         "site" => Attribute::Site(value.clone()),
-        "date" => {
-            let date = chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d").unwrap();
-            Attribute::Date(date)
-        }
+        "date" => Attribute::Date(parse_date(value.as_str())),
         "language" => Attribute::Language(value.clone()),
         "locale" => Attribute::Locale(value.clone()),
         "url" => Attribute::Url(value.clone()),
