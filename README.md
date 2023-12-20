@@ -14,8 +14,8 @@ Thoroughly citing a web resource can be a tedious process. This application aims
 
 ## User interfaces
 
-* CLI &ndash; [``url2ref-cli``](./src/bin/cli) provides a command-line interface powered by [clap](https://crates.io/crates/clap)
-* GUI &ndash; [``url2ref-web``](./src/bin/web) provides an in-browser graphical user interface powered by [Rocket](https://rocket.rs/) and [Bootstrap](https://getbootstrap.com/)
+* CLI &ndash; [``url2ref-cli``](./url2ref-cli) provides a command-line interface powered by [clap](https://crates.io/crates/clap)
+* GUI &ndash; [``url2ref-web``](./url2ref-web) provides an in-browser graphical user interface powered by [Rocket](https://rocket.rs/) and [Bootstrap](https://getbootstrap.com/)
 
 ## Build instructions
 
@@ -31,7 +31,7 @@ where URL points to a web resource.
 
 ### ``url2ref-web``
 
-To build and run the web application, first install the required dependencies via [npm](https://www.npmjs.com/) by executing [``build.sh``](./npm/build.sh) from within the [``npm``](./npm) directory.
+To build and run the web application, first install the required dependencies via [npm](https://www.npmjs.com/) by executing [``build.sh``](./url2ref-web/npm/build.sh) from within the [``npm``](./url2ref-web/npm) directory.
 
 Then execute
 
@@ -39,13 +39,7 @@ Then execute
 cargo run --bin url2ref-web
 ```
 
-or simply
-
-```console
-cargo run
-```
-
-as ``url2ref-web`` is the default binary.
+from the ``url2ref-web`` root.
 
 ## Documentation
 
