@@ -59,12 +59,12 @@ fn main() {
     let args = CommandLineArgs::parse();
     let query = args.url;
 
-    let deepl_key = load_deepl_key().expect("DEEPL_API_KEY couldn't be loaded");
+    let deepl_key = load_deepl_key().ok();
 
     let translation_options = TranslationOptions {
         source: args.source_lang,
         target: args.target_lang,
-        deepl_key: Some(deepl_key)
+        deepl_key: deepl_key
     };
 
     let attribute_config = if args.metadata_priority.is_some() {

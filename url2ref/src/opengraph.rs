@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
-use webpage::HTML;
-
 use crate::attribute::{Attribute, AttributeType, Author};
-use crate::parser::MetadataKey;
-use crate::parser::{parse_date, AttributeParser};
+use crate::parser::{parse_date, AttributeParser, ParseInfo, MetadataKey};
 
 /// Mapping from generic [`AttributeType`] to Open Graph-specific
 /// [`MetadataKey`] instances.
@@ -57,13 +54,13 @@ fn attribute_type_to_attribute(
         AttributeType::Language => Some(Attribute::Language(attribute_value)),
         AttributeType::Site => Some(Attribute::Site(attribute_value)),
         AttributeType::Url => Some(Attribute::Url(attribute_value)),
-        AttributeType::Type => None,
+        _ => None,
     }
 }
 
 impl AttributeParser for OpenGraph {
-    fn parse_attribute(html: &HTML, attribute_type: AttributeType) -> Option<Attribute> {
-        let og = &html.opengraph.properties;
+    fn parse_attribute(parse_info: &ParseInfo, attribute_type: AttributeType) -> Option<Attribute> {
+        let og = &parse_info.html.opengraph.properties;
         let external_keys = keys(attribute_type);
         let attribute_value = try_find_attribute(&og, external_keys)?;
 

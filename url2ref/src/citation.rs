@@ -1,7 +1,7 @@
 //! Module providing functionality for building up citations
 //! in various formats using the Builder pattern.
 
-use crate::attribute::{Attribute, Author};
+use crate::attribute::{Attribute, Author, Date};
 
 pub trait CitationBuilder {
     fn new() -> Self;
@@ -21,7 +21,7 @@ impl WikiCitation {
     // uses different parameters depending on the number and type of authors.
     fn handle_authors(&self, authors: &[Author]) -> String {
 
-        // Creates a string representing an author 
+        // Creates a string representing an author
         // according to the {{cite web}} Wikipedia template.
         fn stringify_author(author: &Author, count: Option<i32>) -> String {
             // Determine whether index should be inserted after author parameters;
@@ -52,6 +52,22 @@ impl WikiCitation {
             .join(" ");
         output
     }
+
+    fn handle_date(&self, date: &Date) -> String {
+        let ymd_pattern = "%Y-%m-%d";
+
+        fn format(input: String) -> String {
+            format!("|date={}", input)
+        }
+
+        match date {
+            Date::DateTime(dt) => format(dt.format(ymd_pattern).to_string()),
+            Date::YearMonthDay(nd) => format(nd.format(ymd_pattern).to_string()),
+            Date::YearMonth { year, month } => format!("|date={}-{}", year, month),
+            Date::Year(year) => format!("|date={}", year),
+        }
+    }
+
 }
 impl CitationBuilder for WikiCitation {
     fn new() -> Self {
@@ -70,7 +86,7 @@ impl CitationBuilder for WikiCitation {
             Attribute::Title(val) => Some(format!("|title={}", val.to_string())),
             Attribute::TranslatedTitle(trans) => Some(format!("|trans-title={} |language={}", trans.text, trans.language)),
             Attribute::Authors(vals) => Some(self.handle_authors(vals)),
-            Attribute::Date(val) => Some(format!("|date={}", val.format("%Y-%m-%d").to_string())),
+            Attribute::Date(val) => Some(self.handle_date(val)),
             Attribute::Language(val) => Some(format!("|language={}", val.to_string())),
             Attribute::Site(val) => Some(format!("|site={}", val.to_string())),
             Attribute::Url(val) => Some(format!("|url={}", val.to_string())),
@@ -125,7 +141,23 @@ impl BibTeXCitation {
         let output = format!("author = \"{}\"", author_list);
         output
     }
+
+    fn handle_date(&self, date: &Date) -> String {
+        let ymd_pattern = "%Y-%m-%d";
+
+        fn format(input: String) -> String {
+            format!("date = \"{}\"", input)
+        }
+
+        match date {
+            Date::DateTime(dt) => format(dt.format(ymd_pattern).to_string()),
+            Date::YearMonthDay(nd) => format(nd.format(ymd_pattern).to_string()),
+            Date::YearMonth { year, month } => format!("year = \"{}\",\nmonth = \"{}\"", year, month),
+            Date::Year(year) => format!("year = \"{}\"", year),
+        }
+    }
 }
+
 impl CitationBuilder for BibTeXCitation {
     fn new() -> Self {
         Self { formatted_string: String::from("") }
@@ -142,7 +174,7 @@ impl CitationBuilder for BibTeXCitation {
         let result_option = match attribute {
             Attribute::Title(val)    => Some(format!("title = \"{}\"", val.to_string())),
             Attribute::Authors(vals) => Some(self.handle_authors(vals)),
-            Attribute::Date(val)     => Some(format!("date = \"{}\"", val.format("%Y-%m-%d").to_string())),
+            Attribute::Date(val)     => Some(self.handle_date(val)),
             Attribute::Url(val)      => Some(format!("url = \\url{{{}}}", val.to_string())),
             _ => None
         };

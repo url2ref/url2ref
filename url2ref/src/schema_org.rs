@@ -6,10 +6,9 @@ use generic::create_generic_attribute;
 use author::create_author_attribute;
 use site::create_site_attribute;
 
-use webpage::HTML;
 use serde_json::Value;
 
-use crate::parser::{AttributeParser, MetadataKey};
+use crate::parser::{AttributeParser, MetadataKey, ParseInfo};
 use crate::attribute::{Attribute, AttributeType};
 
 
@@ -37,8 +36,8 @@ pub struct SchemaOrg;
 
 impl AttributeParser for SchemaOrg {
 
-    fn parse_attribute(html: &HTML, attribute_type: AttributeType) -> Option<Attribute> {
-        let schema = html.schema_org.get(0)?;
+    fn parse_attribute(parse_info: &ParseInfo, attribute_type: AttributeType) -> Option<Attribute> {
+        let schema = parse_info.html.schema_org.get(0)?;
         let schema_json: &Value = &schema.value;
 
         let external_keys = keys(attribute_type);
