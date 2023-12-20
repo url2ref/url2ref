@@ -1,8 +1,13 @@
-use thiserror::Error;
-use std::env::{VarError, self};
+use std::env::VarError;
 use std::fs::File;
 use std::io::Write;
+use std::env;
+use std::path::Path;
+
+use dotenv;
+
 use grass;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CompilationError {
@@ -21,11 +26,17 @@ pub enum CompilationError {
 // No native support for SCSS in Rocket.
 // Paths are also used in Tera templates, so environment variables are
 // used to share state (see .cargo/config.toml).
-pub fn compile(scss_path_key: &str, css_path_key: &str) -> Result<(), CompilationError> {
+pub fn compile() -> Result<(), CompilationError> {
+    // Loading environment vars
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let dotenv_path = Path::new(&manifest_dir).join(".env");
+    dotenv::from_path(&dotenv_path).ok();
+
+    let css_path = Path::new(&manifest_dir).join(env::var("MAIN_CSS_PATH")?);
+    let scss_path = Path::new(&manifest_dir).join(env::var("MAIN_SCSS_PATH")?);
+
     use CompilationError::{FileCreateError, FileWriteError};
 
-    let css_path = env::var(css_path_key)?;
-    let scss_path = env::var(scss_path_key)?;
     let mut output_file = File::create(css_path)
             .map_err(FileCreateError)?;
 

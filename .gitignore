@@ -16,13 +16,5 @@ Cargo.lock
 # Added by cargo
 /target
 
-# Static, NPM assets
-/static/*
-/npm/node_modules
-/npm/package-lock.json
-
-# Exception for custom SCSS and JavaScript
-!/static/custom
-
 # VS code
 .vscode
