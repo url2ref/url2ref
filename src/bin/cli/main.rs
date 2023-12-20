@@ -23,10 +23,10 @@ struct CommandLineArgs {
     format: CitationFormat,
 
     #[clap(short, long)]
-    source_lang: String,
+    source_lang: Option<String>,
 
     #[clap(short, long)]
-    target_lang: String,
+    target_lang: Option<String>,
 }
 
 /// Supported citation formats.
@@ -49,12 +49,12 @@ fn main() {
     let args = CommandLineArgs::parse();
     let query = args.url;
 
-    let deepl_key = load_deepl_key().expect("DEEPL_API_KEY couldn't be loaded");
+    let deepl_key = load_deepl_key();
 
     let translation_options = TranslationOptions {
-        source: Some(args.source_lang),
-        target: Some(args.target_lang),
-        deepl_key: Some(deepl_key)
+        source: args.source_lang,
+        target: args.target_lang,
+        deepl_key: deepl_key.ok()
     };
 
     let reference = generate(&query, &GenerationOptions::with_translation(translation_options)).unwrap();

@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::result;
 
 use crate::attribute::{Attribute, AttributeType};
+use crate::doi::{Doi, self};
 use crate::generator::attribute_config::{AttributePriority, AttributeConfig};
 use crate::generator::{MetadataType, ReferenceGenerationError};
 use crate::opengraph::OpenGraph;
@@ -18,6 +19,38 @@ type Result<T> = result::Result<T, ReferenceGenerationError>;
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct MetadataKey {
     pub key: &'static str,
+}
+
+pub struct ParseInfo {
+    pub html: HTML,
+    pub doi_response: Option<String>
+}
+
+impl ParseInfo {
+
+    pub fn from_url(url: &str) -> Result<ParseInfo> {
+        let html = parse_html_from_url(url)?;
+
+        let found_doi = doi::try_find_doi_in_html(&html);
+        let doi_response = doi::send_doi_request(found_doi.as_deref());
+
+        Ok(
+        ParseInfo {
+            html: html,
+            doi_response: doi_response.ok()
+        })
+
+    }
+
+    pub fn from_file(file: &str) -> Result<ParseInfo> {
+        let html = parse_html_from_file(file)?;
+
+        Ok(
+        ParseInfo {
+            html: html,
+            doi_response: None
+        })
+    }
 }
 
 /// Parses the web page into an HTML object using [`webpage`].
@@ -40,15 +73,16 @@ pub fn parse_date(date_str: &str) -> Option<NaiveDate> {
 /// Implemented by parsers of different metadata formats
 /// (Schema.org, Open Graph, etc.)
 pub trait AttributeParser {
-    fn parse_attribute(html: &HTML, attribute_type: AttributeType) -> Option<Attribute>;
+    fn parse_attribute(parse_info: &ParseInfo, attribute_type: AttributeType) -> Option<Attribute>;
 }
 
 /// Attempt to parse a single attribute
-fn parse(html: &HTML, attribute_type: AttributeType, formats: &AttributePriority) -> Option<Attribute> {
+fn parse(parse_info: &ParseInfo, attribute_type: AttributeType, formats: &AttributePriority) -> Option<Attribute> {
     for format in &formats.priority {
         let attribute = match format {
-            MetadataType::OpenGraph => OpenGraph::parse_attribute(html, attribute_type),
-            MetadataType::SchemaOrg => SchemaOrg::parse_attribute(html, attribute_type)
+            MetadataType::OpenGraph => OpenGraph::parse_attribute(parse_info, attribute_type),
+            MetadataType::SchemaOrg => SchemaOrg::parse_attribute(parse_info, attribute_type),
+            MetadataType::Doi       => Doi::parse_attribute(parse_info, attribute_type)
         };
         if attribute.is_some() {
             return attribute
@@ -65,8 +99,8 @@ pub struct AttributeCollection {
 impl AttributeCollection {
     /// Initialize an [`AttributeCollection`] from the supplied
     /// [`AttributeConfig`] and [`HTML`].
-    pub fn initialize(config: &AttributeConfig, html: &HTML) -> Self {
-        Self { attributes: HashMap::new() }.add_all(config, html)
+    pub fn initialize(config: &AttributeConfig, parse_info: &ParseInfo) -> Self {
+        Self { attributes: HashMap::new() }.add_all(config, parse_info)
     }
 
     /// Retrieves an [`Attribute`] reference from the collection.
@@ -75,9 +109,9 @@ impl AttributeCollection {
     }
 
     /// Adds a single [`Attribute`] to the collection.
-    fn add(mut self, attribute_type: AttributeType, config: &AttributeConfig, html: &HTML) -> Self {
+    fn add(mut self, attribute_type: AttributeType, config: &AttributeConfig, parse_info: &ParseInfo) -> Self {
         let priorities = config.get(attribute_type);
-        let attribute = parse(html, attribute_type, &priorities.clone().unwrap_or_default());
+        let attribute = parse(parse_info, attribute_type, &priorities.clone().unwrap_or_default());
         self.insert_if(attribute_type, attribute);
 
         self
@@ -85,9 +119,9 @@ impl AttributeCollection {
 
     /// Adds the [`Attribute`]s corresponding to all [`AttributeType`] variants to
     /// the collection.
-    fn add_all(mut self, config: &AttributeConfig, html: &HTML) -> Self {
+    fn add_all(mut self, config: &AttributeConfig, parse_info: &ParseInfo) -> Self {
         AttributeType::iter().for_each(|x| {
-            self = self.clone().add(x, config, html);
+            self = self.clone().add(x, config, parse_info);
         });
         self
     }

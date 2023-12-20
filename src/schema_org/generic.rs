@@ -40,7 +40,7 @@ pub fn attribute_type_to_attribute(
         AttributeType::Language => Some(Attribute::Language(attribute_value)),
         AttributeType::Site => panic!("Site should have been handled by specialized method"),
         AttributeType::Url => Some(Attribute::Url(attribute_value)),
-        AttributeType::Type => None,
+        _ => None,
     }
 }
 

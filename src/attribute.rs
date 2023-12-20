@@ -10,13 +10,16 @@ use strum::EnumIter;
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy, EnumIter, Debug)]
 pub enum AttributeType {
    Title,
-   Author, 
+   Author,
    Locale,
    Language,
    Site,
    Date,
    Url,
-   Type
+   Type,
+   Journal,
+   Publisher,
+   Volume
 }
 
 /// Wrapper for the internal representation for attributes

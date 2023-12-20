@@ -25,19 +25,27 @@ fn test_all() {
 /// reference generation results obtained using each [`Parser`] and calls the
 /// [`actual_check`] function to perform the comparison.
 fn check(html_path: &str, expected_results_path: &str) {
+    use MetadataType::*;
     let expected_results = get_expected_results(expected_results_path);
 
     for (metadata_parser, expected_attributes) in expected_results.iter() {
         let generation_options = match metadata_parser {
-            MetadataType::OpenGraph => {
-                let priorities = AttributePriority { priority: vec!(MetadataType::OpenGraph)};
+            OpenGraph => {
+                let priorities = AttributePriority { priority: vec!(OpenGraph)};
                 GenerationOptions {
                     config: AttributeConfig::new(priorities),
                     ..Default::default()
                 }
             },
-            MetadataType::SchemaOrg => {
-                let priorities = AttributePriority { priority: vec!(MetadataType::SchemaOrg)};
+            SchemaOrg => {
+                let priorities = AttributePriority { priority: vec!(SchemaOrg)};
+                GenerationOptions {
+                    config: AttributeConfig::new(priorities),
+                    ..Default::default()
+                }
+            },
+            Doi => {
+                let priorities = AttributePriority { priority: vec!(Doi)};
                 GenerationOptions {
                     config: AttributeConfig::new(priorities),
                     ..Default::default()

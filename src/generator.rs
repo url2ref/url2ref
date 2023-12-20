@@ -1,13 +1,13 @@
 //! Generator responsible for producing a [`Reference`]
 
 use std::result;
+use std::string::FromUtf8Error;
 use strum::{EnumIter, EnumCount};
 use deepl_api::{DeepL, TranslatableTextList, Error as DeepLError};
 use thiserror::Error;
-use webpage::HTML;
 
 use crate::attribute::{Attribute, AttributeType, Translation};
-use crate::parser::{parse_html_from_file, parse_html_from_url, AttributeCollection};
+use crate::parser::{AttributeCollection, ParseInfo};
 use crate::reference::Reference;
 use crate::GenerationOptions;
 
@@ -19,12 +19,24 @@ type Result<T> = result::Result<T, ReferenceGenerationError>;
 pub enum ReferenceGenerationError {
     #[error("URL failed to parse")]
     URLParseError(#[from] std::io::Error),
+
     #[error("DeepL translation failed")]
     DeepLError(#[from] DeepLError),
+
     #[error("Title translation procedure failed")]
     TranslationError,
+
     #[error("Environment variable not found")]
     VarError(#[from] std::env::VarError),
+
+    #[error("Could not generate from DOI")]
+    CurlDoiError(#[from] curl::Error),
+
+    #[error("No DOI was found")]
+    DoiError,
+
+    #[error("Invalid UTF8")]
+    Utf8Error(#[from] FromUtf8Error)
 }
 
 #[derive(Default, Clone, Copy, PartialEq, EnumIter, EnumCount, Eq, Hash)]
@@ -32,6 +44,7 @@ pub enum MetadataType {
     #[default]
     OpenGraph,
     SchemaOrg,
+    Doi
 }
 
 /// User options for title translation.
@@ -59,7 +72,7 @@ pub mod attribute_config {
     impl Default for AttributePriority {
         fn default() -> Self {
             Self {
-                priority: vec!(MetadataType::SchemaOrg, MetadataType::OpenGraph),
+                priority: vec!(MetadataType::Doi),
             }
         }
     }
@@ -94,6 +107,7 @@ pub mod attribute_config {
         pub url: Option<AttributePriority>,
         pub journal: Option<AttributePriority>,
         pub publisher: Option<AttributePriority>,
+        pub volume: Option<AttributePriority>,
     }
 
     impl AttributeConfig {
@@ -114,14 +128,17 @@ pub mod attribute_config {
 
         pub fn get(&self, attribute_type: AttributeType) -> &Option<AttributePriority> {
             match attribute_type {
-                AttributeType::Title    => &self.title,
-                AttributeType::Author   => &self.authors,
-                AttributeType::Date     => &self.date,
-                AttributeType::Language => &self.language,
-                AttributeType::Locale   => &self.locale,
-                AttributeType::Site     => &self.site,
-                AttributeType::Url      => &self.url,
-                AttributeType::Type     => &None // TODO: Decide future of AttributeType::Type
+                AttributeType::Title     => &self.title,
+                AttributeType::Author    => &self.authors,
+                AttributeType::Date      => &self.date,
+                AttributeType::Language  => &self.language,
+                AttributeType::Locale    => &self.locale,
+                AttributeType::Site      => &self.site,
+                AttributeType::Url       => &self.url,
+                AttributeType::Type      => &None, // TODO: Decide future of AttributeType::Type
+                AttributeType::Journal   => &self.journal,
+                AttributeType::Publisher => &self.publisher,
+                AttributeType::Volume    => &self.volume,
             }
         }
     }
@@ -129,21 +146,21 @@ pub mod attribute_config {
 
 /// Generates a [`Reference`] from a URL.
 pub fn from_url(url: &str, options: &GenerationOptions) -> Result<Reference> {
-    let html = parse_html_from_url(url)?;
-    create_reference(&html, &options)
+    let parse_info = ParseInfo::from_url(url)?;
+    create_reference(&parse_info, &options)
 }
 
 /// Generates a [`Reference`] from raw HTML as read from a file.
 pub fn from_file(html_path: &str, options: &GenerationOptions) -> Result<Reference> {
-    let html = parse_html_from_file(html_path)?;
-    create_reference(&html, &options)
+    let parse_info = ParseInfo::from_file(html_path)?;
+    create_reference(&parse_info, &options)
 }
 
 /// Create [`Reference`] by combining the extracted Open Graph and
 /// Schema.org metadata.
-fn create_reference(html: &HTML, options: &GenerationOptions) -> Result<Reference> {
+fn create_reference(parse_info: &ParseInfo, options: &GenerationOptions) -> Result<Reference> {
     // Build attribute collection based on configuration
-    let attribute_collection = AttributeCollection::initialize(&options.config, html);
+    let attribute_collection = AttributeCollection::initialize(&options.config, parse_info);
 
     let title = attribute_collection.get(AttributeType::Title);
     let author = attribute_collection.get(AttributeType::Author);

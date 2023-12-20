@@ -18,6 +18,7 @@ pub mod attribute;
 pub mod generator;
 mod schema_org;
 mod opengraph;
+mod doi;
 mod citation;
 mod parser;
 mod reference;
@@ -44,7 +45,7 @@ impl Default for GenerationOptions {
             .unwrap();
         let translation_options = TranslationOptions::default();
 
-        Self { 
+        Self {
             config,
             translation_options,
         }
@@ -52,7 +53,7 @@ impl Default for GenerationOptions {
 }
 impl GenerationOptions {
     pub fn new(config: AttributeConfig, translation_options: TranslationOptions) -> Self {
-        Self { 
+        Self {
             config,
             translation_options,
         }
