@@ -22,12 +22,13 @@ pub struct MetadataKey {
     pub key: &'static str,
 }
 
-pub struct ParseInfo {
+pub struct ParseInfo<'a> {
+    pub url: Option<&'a str>,
     pub html: HTML,
     pub bibliography: Option<Bibliography>
 }
 
-impl ParseInfo {
+impl ParseInfo<'_> {
 
     pub fn from_url(url: &str) -> Result<ParseInfo> {
         let html = parse_html_from_url(url)?;
@@ -35,7 +36,8 @@ impl ParseInfo {
 
         Ok(
         ParseInfo {
-            html: html,
+            url: Some(url),
+            html,
             bibliography: bib.ok()
         })
 
@@ -46,7 +48,8 @@ impl ParseInfo {
 
         Ok(
         ParseInfo {
-            html: html,
+            url: None,
+            html,
             bibliography: None
         })
     }
