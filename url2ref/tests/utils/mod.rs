@@ -179,8 +179,8 @@ pub fn compared_attributes_with_expected(
         site,
         url,
         publisher,
-        archived_url,
-        archived_date
+        archive_url,
+        archive_date
     } = reference
     {
         for attribute in expected_attributes {

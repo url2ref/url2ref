@@ -16,8 +16,8 @@ pub enum Reference {
         site: Option<Attribute>,
         url: Option<Attribute>,
         publisher: Option<Attribute>,
-        archived_url: Option<Attribute>,
-        archived_date: Option<Attribute>,
+        archive_url: Option<Attribute>,
+        archive_date: Option<Attribute>,
     },
     ScholarlyArticle {
         title: Option<Attribute>,
@@ -28,8 +28,8 @@ pub enum Reference {
         url: Option<Attribute>,
         journal: Option<Attribute>,
         publisher: Option<Attribute>,
-        archived_url: Option<Attribute>,
-        archived_date: Option<Attribute>,
+        archive_url: Option<Attribute>,
+        archive_date: Option<Attribute>,
     },
     GenericReference {
         title: Option<Attribute>,
@@ -39,14 +39,14 @@ pub enum Reference {
         language: Option<Attribute>,
         site: Option<Attribute>,
         url: Option<Attribute>,
-        archived_url: Option<Attribute>,
-        archived_date: Option<Attribute>,
+        archive_url: Option<Attribute>,
+        archive_date: Option<Attribute>,
     }
 }
 impl Reference {
     fn build_citation<T: CitationBuilder>(&self, builder: T) -> String {
         match self {
-            Reference::NewsArticle { title, translated_title, author, date, language, site, url, archived_url, archived_date, publisher } => {
+            Reference::NewsArticle { title, translated_title, author, date, language, site, url, archive_url, archive_date, publisher } => {
                 let formatted_string = builder
                     .try_add(title)
                     .try_add(translated_title)
@@ -55,13 +55,13 @@ impl Reference {
                     .try_add(language)
                     .try_add(site)
                     .try_add(url)
-                    .try_add(archived_url)
-                    .try_add(archived_date)
+                    .try_add(archive_url)
+                    .try_add(archive_date)
                     .try_add(publisher)
                     .build();
                 formatted_string
             }
-            Reference::ScholarlyArticle { title, translated_title, author, date, language, url, archived_url, archived_date, publisher, journal } => {
+            Reference::ScholarlyArticle { title, translated_title, author, date, language, url, archive_url, archive_date, publisher, journal } => {
                 let formatted_string = builder
                     .try_add(title)
                     .try_add(translated_title)
@@ -69,14 +69,14 @@ impl Reference {
                     .try_add(date)
                     .try_add(language)
                     .try_add(url)
-                    .try_add(archived_url)
-                    .try_add(archived_date)
+                    .try_add(archive_url)
+                    .try_add(archive_date)
                     .try_add(journal)
                     .try_add(publisher)
                     .build();
                 formatted_string
             }
-            Reference::GenericReference { title, translated_title, author, date, language, site, url, archived_url, archived_date } => {
+            Reference::GenericReference { title, translated_title, author, date, language, site, url, archive_url, archive_date } => {
                 let formatted_string = builder
                     .try_add(title)
                     .try_add(translated_title)
@@ -85,8 +85,8 @@ impl Reference {
                     .try_add(language)
                     .try_add(site)
                     .try_add(url)
-                    .try_add(archived_url)
-                    .try_add(archived_date)
+                    .try_add(archive_url)
+                    .try_add(archive_date)
                     .build();
                 formatted_string
             }

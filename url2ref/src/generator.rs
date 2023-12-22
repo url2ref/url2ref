@@ -202,7 +202,7 @@ fn create_reference(parse_info: &ParseInfo, options: &GenerationOptions) -> Gene
     let translated_title = translate_title(&title, &options.translation_options).ok();
 
     // Include archived URL and date according to archive options.
-    let (archived_url, archived_date) = fetch_archive_info(&url, &options.archive_options);
+    let (archive_url, archive_date) = fetch_archive_info(&url, &options.archive_options);
 
     let reference = Reference::NewsArticle {
         title,
@@ -213,8 +213,8 @@ fn create_reference(parse_info: &ParseInfo, options: &GenerationOptions) -> Gene
         url,
         site,
         publisher,
-        archived_url,
-        archived_date
+        archive_url,
+        archive_date
     };
 
     Ok(reference)
@@ -262,7 +262,9 @@ fn translate<'a>(content: &'a str, options: &TranslationOptions) -> GenerationRe
 /// [`Wayback Machine API documentation`]: https://archive.org/help/wayback_api.php
 #[derive(Debug, Deserialize)]
 struct WaybackSnapshot {
+    #[serde(rename = "status")]
     _status: String,
+    #[serde(rename = "available")]
     _available: bool,
     url: String,
     timestamp: String,
@@ -279,10 +281,11 @@ fn fetch_archive_info(url: &Option<Attribute>, _options: &ArchiveOptions) -> (Op
         let date_attribute = wayback_snapshot.as_ref().map(|snapshot| {
             Attribute::ArchiveDate(
                 Date::DateTime(
-                    parse_wayback_timestamp(&snapshot.timestamp).unwrap()
+                    parse_wayback_timestamp(&snapshot.timestamp).unwrap() // TODO: Get rid of this unwrap()
                 )
             )
         });
+
         (url_attribute, date_attribute)
     } else {
         (None, None)
@@ -297,9 +300,7 @@ fn call_wayback_api(url: &str, timestamp_option: &Option<&str>) -> Result<Waybac
     let response = utils::get_response_as_string(&request_url)?;
     
     // Extract snapshot information for the closest retrieved snapshot.
-    let snapshot_info = &serde_json::from_str::<Value>(&response)
-        .expect("Error parsing JSON")
-        ["archived_snapshots"]["closest"];
+    let snapshot_info = &serde_json::from_str::<Value>(&response)?["archived_snapshots"]["closest"];
 
     // Attempt to deserialize the snapshot information to a [`WaybackSnapshot`] struct.
     serde_json::from_value(snapshot_info.clone())
