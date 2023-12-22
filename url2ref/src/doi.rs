@@ -1,4 +1,4 @@
-//! Parser responsible for producing an [`Attribute`] from a Bibtex entry
+//! Parser responsible for producing an [`Attribute`] from a BibTeX entry
 //! retrieved from a DOI.
 
 use crate::attribute::{Attribute, AttributeType, Author, Date};
@@ -24,7 +24,7 @@ pub enum DoiError {
     #[error("DOI was not found in HTML")]
     DoiNotInHtmlError,
 
-    #[error("Bibtex string could not be parsed")]
+    #[error("BibTeX string could not be parsed")]
     BibtexParseError,
 }
 
@@ -51,11 +51,9 @@ fn try_find_doi_in_html(html: &HTML) -> Result<String, DoiError> {
     return doi_in_text.map(str::to_string);
 }
 
-/// Returns a Bibtex entry in string format by calling the DOI API.
+/// Returns a BibTeX entry in string format by calling the DOI API.
 /// See https://citation.crosscite.org/docs.html for more information.
-fn send_doi_request(
-    doi: &str,
-) -> std::result::Result<String, DoiError> {
+fn send_doi_request(doi: &str) -> std::result::Result<String, DoiError> {
     let mut easy = Easy::new();
     let mut buf = Vec::new();
 
@@ -215,8 +213,7 @@ fn attribute_type_to_attribute(entry: &Entry, attribute_type: AttributeType) -> 
 
             Some(Attribute::Institution(value.to_string()))
         },
-        AttributeType::Locale   => None,
-        AttributeType::Site     => None,
+        _ => None,
     }
 }
 
@@ -228,7 +225,7 @@ impl AttributeParser for Doi {
 
         assert!(
             bib.len() == 1,
-            "Parsed Bibtex contained more than one entry, was input ok?"
+            "Parsed BibTeX contained more than one entry, was input ok?"
         );
 
         // Ignore any extra entries.

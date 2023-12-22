@@ -22,8 +22,9 @@ mod doi;
 mod citation;
 mod parser;
 mod reference;
+mod utils;
 
-use generator::{attribute_config::{AttributeConfig, AttributeConfigBuilder}, TranslationOptions, ReferenceGenerationError};
+use generator::{attribute_config::{AttributeConfig, AttributeConfigBuilder}, TranslationOptions, ReferenceGenerationError, ArchiveOptions};
 pub use reference::*;
 
 type Result<T> = result::Result<T, ReferenceGenerationError>;
@@ -34,9 +35,7 @@ type Result<T> = result::Result<T, ReferenceGenerationError>;
 pub struct GenerationOptions {
     pub attribute_config: AttributeConfig,
     pub translation_options: TranslationOptions,
-    // include_archived: bool,
-    // user_language: &str,
-    // ...
+    pub archive_options: ArchiveOptions,
 }
 impl Default for GenerationOptions {
     fn default() -> Self {
@@ -44,18 +43,21 @@ impl Default for GenerationOptions {
             .build()
             .unwrap();
         let translation_options = TranslationOptions::default();
+        let archive_options = ArchiveOptions::default();
 
         Self {
             attribute_config,
             translation_options,
+            archive_options,
         }
     }
 }
 impl GenerationOptions {
-    pub fn new(attribute_config: AttributeConfig, translation_options: TranslationOptions) -> Self {
+    pub fn new(attribute_config: AttributeConfig, translation_options: TranslationOptions, archive_options: ArchiveOptions) -> Self {
         Self {
             attribute_config,
             translation_options,
+            archive_options,
         }
     }
 }
