@@ -60,7 +60,8 @@ fn attribute_type_to_attribute(
 
 impl AttributeParser for OpenGraph {
     fn parse_attribute(parse_info: &ParseInfo, attribute_type: AttributeType) -> Option<Attribute> {
-        let og = &parse_info.html.opengraph.properties;
+        let html = parse_info.html.as_ref()?;
+        let og = &html.opengraph.properties;
         let external_keys = keys(attribute_type);
         let attribute_value = try_find_attribute(&og, external_keys)?;
 

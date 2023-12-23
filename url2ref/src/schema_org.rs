@@ -37,7 +37,8 @@ pub struct SchemaOrg;
 impl AttributeParser for SchemaOrg {
 
     fn parse_attribute(parse_info: &ParseInfo, attribute_type: AttributeType) -> Option<Attribute> {
-        let schema = parse_info.html.schema_org.get(0)?;
+        let html = parse_info.html.as_ref()?;
+        let schema = html.schema_org.get(0)?;
         let schema_json: &Value = &schema.value;
 
         let external_keys = keys(attribute_type);
