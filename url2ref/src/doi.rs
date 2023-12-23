@@ -40,7 +40,7 @@ fn doi_regex_match(string: &str) -> Result<&str, DoiError> {
 }
 
 /// Tries to find a DOI link in the HTML.
-fn try_find_doi_in_html(html: &str) -> Result<String, DoiError> {
+fn try_find_doi_in_string(html: &str) -> Result<String, DoiError> {
     let doi_in_text = doi_regex_match(html);
     return doi_in_text.map(str::to_string);
 }
@@ -55,16 +55,28 @@ fn send_doi_request(doi: &str) -> std::result::Result<String, DoiError> {
     Ok(get(full_doi.as_str(), header_opt, follow_location)?)
 }
 
-/// The function first tries to find a DOI address in the HTML.
-/// If found,
-pub fn try_doi_to_bib(html: &str, contained: &bool) -> Result<Bibliography, ReferenceGenerationError> {
+/// The function first tries to find a DOI address in the HTML
+/// or in the URL itself.
+/// If found, the DOI is resolved and returned as Bibtex markup
+/// and finally parsed.
+pub fn try_doi_to_bib(
+    url: &str,
+    html: &str,
+    contained: &bool,
+) -> Result<Bibliography, ReferenceGenerationError> {
     if !contained {
-        return Err(ReferenceGenerationError::ParseSkip)
+        return Err(ReferenceGenerationError::ParseSkip);
     }
+    let doi_html = try_find_doi_in_string(html);
+    let doi_url = try_find_doi_in_string(url);
 
-    let doi_address = try_find_doi_in_html(html)?;
+    let doi_address = if doi_html.is_ok() {
+        doi_html.unwrap()
+    } else {
+        doi_url?
+    };
+
     let doi_response = send_doi_request(doi_address.as_str())?;
-
     let bib = Bibliography::parse(doi_response.as_str()).map_err(|_| DoiError::BibtexParseError)?;
     Ok(bib)
 }

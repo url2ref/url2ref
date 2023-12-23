@@ -38,7 +38,7 @@ impl ParseInfo {
         let doi = parsers.contains(&Doi);
 
         let html = parse_html_from_string(raw_html.clone(), &schema_or_og);
-        let bib = doi::try_doi_to_bib(raw_html.as_str(), &doi);
+        let bib = doi::try_doi_to_bib(url, raw_html.as_str(), &doi);
 
         if (schema_or_og && html.is_err()) && (doi && bib.is_err()) {
             return Err(ReferenceGenerationError::ParseFailure);
