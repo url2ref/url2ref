@@ -50,7 +50,7 @@ fn check(html_path: &str, expected_results_path: &str) {
                     attribute_config: AttributeConfig::new(priorities),
                     ..Default::default()
                 }
-            },
+            }
         };
 
         compared_attributes_with_expected(html_path, &expected_attributes, &generation_options);

@@ -47,7 +47,7 @@ impl ParseInfo {
         Ok(ParseInfo {
             raw_html: raw_html,
             html: html.ok(),
-            bibliography: bib.ok(),
+            bibliography: bib.ok()
         })
     }
 
@@ -60,7 +60,7 @@ impl ParseInfo {
         Ok(ParseInfo {
             raw_html: raw_html,
             html: Some(html),
-            bibliography: None,
+            bibliography: None
         })
     }
 }
@@ -99,7 +99,7 @@ fn parse(
         let attribute = match format {
             MetadataType::OpenGraph => OpenGraph::parse_attribute(parse_info, attribute_type),
             MetadataType::SchemaOrg => SchemaOrg::parse_attribute(parse_info, attribute_type),
-            MetadataType::Doi => Doi::parse_attribute(parse_info, attribute_type),
+            MetadataType::Doi => Doi::parse_attribute(parse_info, attribute_type)
         };
         if attribute.is_some() {
             return attribute;

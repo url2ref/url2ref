@@ -49,7 +49,7 @@ pub enum MetadataType {
     #[default]
     OpenGraph,
     SchemaOrg,
-    Doi,
+    Doi
 }
 
 /// User options for title translation.
@@ -80,7 +80,7 @@ pub mod attribute_config {
     impl Default for AttributePriority {
         fn default() -> Self {
             Self {
-                priority: vec![MetadataType::SchemaOrg, MetadataType::OpenGraph],
+                priority: vec![MetadataType::OpenGraph, MetadataType::SchemaOrg],
             }
         }
     }
