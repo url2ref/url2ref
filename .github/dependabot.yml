@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/url2ref"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "cargo"
+    directory: "/url2ref-cli"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "cargo"
+    directory: "/url2ref-web"
+    schedule:
+      interval: "weekly"
