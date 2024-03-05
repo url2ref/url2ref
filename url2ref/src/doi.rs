@@ -2,24 +2,19 @@
 //! retrieved from a DOI.
 
 use crate::attribute::{Attribute, AttributeType, Author, Date};
+use crate::curl::{get, CurlError};
 use crate::generator::ReferenceGenerationError;
 use crate::parser::{AttributeParser, ParseInfo};
 
 use biblatex::{Bibliography, Chunk, Entry, PermissiveType};
 use chrono::NaiveDate;
-use curl::easy::{Easy, List};
 use regex::Regex;
 use thiserror::Error;
-use webpage::HTML;
-
 
 #[derive(Error, Debug)]
 pub enum DoiError {
     #[error("Curl could not retrieve DOI")]
-    CurlError(#[from] curl::Error),
-
-    #[error("Curl response is not valid UTF8")]
-    Utf8Error(#[from] std::string::FromUtf8Error),
+    CurlError(#[from] CurlError),
 
     #[error("DOI was not found in HTML")]
     DoiNotInHtmlError,
@@ -29,6 +24,8 @@ pub enum DoiError {
 }
 
 fn doi_regex_match(string: &str) -> Result<&str, DoiError> {
+    // Pattern taken from: https://www.crossref.org/blog/dois-and-matching-regular-expressions/
+    // Matches 97% of tested DOIs.
     let doi_pattern = r#"(\b10\.\d{4,9}/[-.;()/:\w]+)"#;
     let re = Regex::new(doi_pattern).unwrap();
 
@@ -42,53 +39,44 @@ fn doi_regex_match(string: &str) -> Result<&str, DoiError> {
     result.cloned().ok_or(DoiError::DoiNotInHtmlError)
 }
 
-/// Tries to find a DOI link in the text content of the HTML.
-/// This function does not consider that DOI can be hidden in meta-tags.
-fn try_find_doi_in_html(html: &HTML) -> Result<String, DoiError> {
-    let text = &html.text_content;
-
-    let doi_in_text = doi_regex_match(text.as_str());
+/// Tries to find a DOI link in the HTML.
+fn try_find_doi_in_string(html: &str) -> Result<String, DoiError> {
+    let doi_in_text = doi_regex_match(html);
     return doi_in_text.map(str::to_string);
 }
 
 /// Returns a Bibtex entry in string format by calling the DOI API.
 /// See https://citation.crosscite.org/docs.html for more information.
-fn send_doi_request(
-    doi: &str,
-) -> std::result::Result<String, DoiError> {
-    let mut easy = Easy::new();
-    let mut buf = Vec::new();
-
+fn send_doi_request(doi: &str) -> std::result::Result<String, DoiError> {
     let full_doi = format!("https://doi.org/{}", doi);
+    let header_opt = Some("Accept: application/x-bibtex");
+    let follow_location = true;
 
-    // Header determines output format
-    let mut header_list = List::new();
-    let header = "Accept: application/x-bibtex";
-    header_list.append(header)?;
-
-    easy.follow_location(true)?;
-    easy.http_headers(header_list)?;
-    easy.url(full_doi.as_str())?;
-
-    {
-        let mut transfer = easy.transfer();
-        transfer.write_function(|data| {
-            buf.extend_from_slice(data);
-            Ok(data.len())
-        })?;
-        transfer.perform()?;
-    }
-
-    let reponse_string = String::from_utf8(buf)?;
-    Ok(reponse_string)
+    Ok(get(full_doi.as_str(), header_opt, follow_location)?)
 }
 
-/// The function first tries to find a DOI address in the HTML.
-/// If found,
-pub fn try_doi_to_bib(html: &HTML) -> Result<Bibliography, ReferenceGenerationError> {
-    let doi_address = try_find_doi_in_html(html)?;
-    let doi_response = send_doi_request(doi_address.as_str())?;
+/// The function first tries to find a DOI address in the HTML
+/// or in the URL itself.
+/// If found, the DOI is resolved and returned as Bibtex markup
+/// and finally parsed.
+pub fn try_doi_to_bib(
+    url: &str,
+    html: &str,
+    contained: &bool,
+) -> Result<Bibliography, ReferenceGenerationError> {
+    if !contained {
+        return Err(ReferenceGenerationError::ParseSkip);
+    }
+    let doi_html = try_find_doi_in_string(html);
+    let doi_url = try_find_doi_in_string(url);
 
+    let doi_address = if doi_html.is_ok() {
+        doi_html.unwrap()
+    } else {
+        doi_url?
+    };
+
+    let doi_response = send_doi_request(doi_address.as_str())?;
     let bib = Bibliography::parse(doi_response.as_str()).map_err(|_| DoiError::BibtexParseError)?;
     Ok(bib)
 }
@@ -112,11 +100,13 @@ fn try_create_internal_date(datetime: &biblatex::Datetime) -> Option<Date> {
         (year, Some(month), Some(day)) => {
             let naive_date = NaiveDate::from_ymd_opt(year, month as u32, day as u32)?;
             Some(Date::YearMonthDay(naive_date))
-        },
-        (year, Some(month), None) => Some(Date::YearMonth { year: year, month: month as i32 }),
+        }
+        (year, Some(month), None) => Some(Date::YearMonth {
+            year: year,
+            month: month as i32,
+        }),
         (year, None, None) => Some(Date::Year(year)),
-        _ => None
-
+        _ => None,
     }
 }
 
@@ -124,17 +114,17 @@ fn date_to_attribute(pt: &PermissiveType<biblatex::Date>) -> Option<Attribute> {
     match pt {
         PermissiveType::Typed(date_type) => {
             if date_type.approximate || date_type.uncertain {
-                return None
+                return None;
             }
 
             match date_type.value {
                 biblatex::DateValue::At(datetime) => {
                     let date = try_create_internal_date(&datetime)?;
                     Some(Attribute::Date(date))
-                },
-                _ => None
+                }
+                _ => None,
             }
-        },
+        }
         PermissiveType::Chunks(_) => None,
     }
 }

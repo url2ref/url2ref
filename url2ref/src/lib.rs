@@ -19,6 +19,7 @@ pub mod generator;
 mod schema_org;
 mod opengraph;
 mod doi;
+mod curl;
 mod citation;
 mod parser;
 mod reference;
