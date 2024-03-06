@@ -1,7 +1,104 @@
 {% extends "layout" %}
 
 {% block content %}
-<div class="pb-4">
-  <p>Hello, world!</p>
+
+<div class="center">
+
+  <form action="/submit_url" method="post" id="url_form">
+    <div class="row">
+      <div class="col-sm-6">
+        <div class="form-group">
+          <input type="url" class="form-control" name="url" placeholder="https://github.com/url2ref/url2ref" value="{{current_url}}">
+        </div>
+      </div>
+      
+      <div class="col-auto">
+        <select class="form-select" name="source_lang" id="form-control-select1">
+        
+          {% for language_code in language_codes %}
+            {% if language_code == "en" %}
+              <option selected="selected">{{ language_code }}</option>
+            {% else %}
+              <option>{{ language_code }}</option>
+            {% endif %}
+          {% endfor %}
+
+        </select>
+      </div>
+
+      <div class="col-auto">
+        <select class="form-select" name="target_lang" id="form-control-select2">
+        
+          {% for language_code in language_codes %}
+            {% if language_code == "en" %}
+              <option selected="selected">{{ language_code }}</option>
+            {% else %}
+              <option>{{ language_code }}</option>
+            {% endif %}
+          {% endfor %}
+
+        </select>
+      </div>
+
+      <div class="col-sm-auto">
+        <select class="form-select" name="format" id="form-control-select3">
+          {% for citation_format in citation_formats %}
+            {% if citation_format == "Wiki" %}
+              <option selected="selected">{{ citation_format }}</option>
+            {% else %}
+              <option>{{ citation_format }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="col-auto">
+        <div class="form-check position-static">
+          <input class="form-check-input" type="checkbox" name="archive">
+        </div>
+      </div>
+
+
+      <div class="col-sm-2">
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </div>
+      
+    </div>
+  </form>
+
+  <div class="pb-4">
+    {% if reference_output %}
+      <div class="card">
+        <div class="card-header">
+          <ul class="nav nav-tabs card-header-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="raw-tab" data-bs-toggle="tab" data-bs-target="#raw" type="button" role="tab" aria-controls="raw" aria-selected="true">Raw</button>
+            </li>
+          </ul>
+        </div>
+        <div class="tab-content card-body" id="myTabContent">
+          <div class="tab-pane fade show active" id="raw_tab" role="tabpanel" aria-labelledby="raw-tab">
+            <span id="raw_tab_text">
+              {{ reference_output }}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="text-center pt-2">
+
+        <button type="button" id="copy-to-clipboard" class="btn btn-outline-secondary" data-bs-custom-class="custom-tooltip" 
+        data-bs-toggle="tooltip" data-bs-trigger="focus" data-bs-placement="bottom" title="Copied!" onclick="copyToClipboard()">
+
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-clipboard">
+          <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
+          <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>
+        </svg>
+          Copy
+        </button>
+      </div>
+    {% endif %}
+  </div>
+
+  
 </div>
 {% endblock content %}
