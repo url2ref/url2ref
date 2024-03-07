@@ -1,3 +1,0 @@
-[env]
-MAIN_CSS_PATH = "./static/css/url2ref.css"
-MAIN_SCSS_PATH = "./static/custom/sass/url2ref.scss"

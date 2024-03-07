@@ -1,0 +1,15 @@
+[package]
+name = "url2ref-cli"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.76.0"
+authors = ["The url2ref developers"]
+license = "GPLv3"
+readme = "../README.md"
+repository = "https://github.com/url2ref/url2ref"
+keywords = ["semantic web", "reference generation"]
+description = "CLI for the url2ref library"
+
+[dependencies]
+url2ref = { path = "../url2ref" }
+clap = { version = "4.4.11", features = ["derive"] }

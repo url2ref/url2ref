@@ -1,0 +1,53 @@
+name: CI
+
+on: [pull_request]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust: [nightly]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setting up Rust toolchain
+      uses: hecrj/setup-rust-action@v2.0.0
+      with:
+        rust-version: ${{ matrix.rust }}
+    - name: Install url2ref-web dependencies
+      working-directory: ./url2ref-web/npm
+      shell: bash
+      run: ./build.sh
+    - name: Build
+      run: cargo build --verbose
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust: [nightly]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setting up Rust toolchain
+      uses: hecrj/setup-rust-action@v2.0.0
+      with:
+        rust-version: ${{ matrix.rust }}
+    - name: Run tests
+      env:
+        DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
+      run: cargo test --workspace --verbose
+      
+  
+  docs:
+    name: cargo doc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup update nightly && rustup default nightly
+      - run: cargo doc --workspace --no-deps
