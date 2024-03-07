@@ -1,11 +1,12 @@
 //! Parser which extracts the metadata to be combined into a [`crate::reference::Reference`].
 
 use std::collections::HashMap;
-use std::result;
+use std::{fs, result};
 
 use crate::attribute::{Attribute, AttributeType, Date};
-use crate::doi::{Doi, self};
-use crate::generator::attribute_config::{AttributePriority, AttributeConfig};
+use crate::curl::get_html;
+use crate::doi::{self, Doi};
+use crate::generator::attribute_config::{AttributeConfig, AttributePriority};
 use crate::generator::{MetadataType, ReferenceGenerationError};
 use crate::opengraph::OpenGraph;
 use crate::schema_org::SchemaOrg;
@@ -13,7 +14,7 @@ use crate::schema_org::SchemaOrg;
 use biblatex::Bibliography;
 use chrono::{DateTime, TimeZone, Utc};
 use strum::IntoEnumIterator;
-use webpage::{Webpage, WebpageOptions, HTML};
+use webpage::HTML;
 
 type Result<T> = result::Result<T, ReferenceGenerationError>;
 
@@ -24,46 +25,56 @@ pub struct MetadataKey {
 
 pub struct ParseInfo<'a> {
     pub url: Option<&'a str>,
-    pub html: HTML,
-    pub bibliography: Option<Bibliography>
+    pub raw_html: String,
+    pub html: Option<HTML>,
+    pub bibliography: Option<Bibliography>,
 }
 
 impl ParseInfo<'_> {
+    pub fn from_url<'a>(url: &'a str, parsers: &[MetadataType]) -> Result<ParseInfo<'a>> {
+        use MetadataType::*;
+        let raw_html = get_html(url)?;
 
-    pub fn from_url(url: &str) -> Result<ParseInfo> {
-        let html = parse_html_from_url(url)?;
-        let bib = doi::try_doi_to_bib(&html);
+        let schema_or_og = parsers.contains(&OpenGraph) || parsers.contains(&SchemaOrg);
+        let doi = parsers.contains(&Doi);
 
-        Ok(
-        ParseInfo {
+        let html = parse_html_from_string(raw_html.clone(), &schema_or_og);
+        let bib = doi::try_doi_to_bib(url, raw_html.as_str(), &doi);
+
+        if (schema_or_og && html.is_err()) && (doi && bib.is_err()) {
+            return Err(ReferenceGenerationError::ParseFailure);
+        }
+
+        Ok(ParseInfo {
             url: Some(url),
-            html,
+            raw_html: raw_html,
+            html: html.ok(),
             bibliography: bib.ok()
         })
-
     }
 
-    pub fn from_file(file: &str) -> Result<ParseInfo> {
-        let html = parse_html_from_file(file)?;
+    pub fn from_file(path: &str) -> Result<ParseInfo> {
+        let raw_html = fs::read_to_string(path)?;
 
-        Ok(
-        ParseInfo {
+        // TODO: should we return ParseFailure here?
+        let html = parse_html_from_string(raw_html.clone(), &true)?;
+
+        Ok(ParseInfo {
             url: None,
-            html,
+            raw_html: raw_html,
+            html: Some(html),
             bibliography: None
         })
     }
 }
 
 /// Parses the web page into an HTML object using [`webpage`].
-pub fn parse_html_from_url(url: &str) -> Result<HTML> {
-    let html = Webpage::from_url(url, WebpageOptions::default())?.html;
-    Ok(html)
-}
+pub fn parse_html_from_string(raw_html: String, contained: &bool) -> Result<HTML> {
+    if !contained {
+        return Err(ReferenceGenerationError::ParseSkip);
+    }
 
-/// Parses the web page into an HTML object using [`webpage`].
-pub fn parse_html_from_file(path: &str) -> Result<HTML> {
-    let html = HTML::from_file(path, None)?;
+    let html = HTML::from_string(raw_html, None)?;
     Ok(html)
 }
 
@@ -82,15 +93,19 @@ pub trait AttributeParser {
 }
 
 /// Attempt to parse a single attribute
-fn parse(parse_info: &ParseInfo, attribute_type: AttributeType, formats: &AttributePriority) -> Option<Attribute> {
+fn parse(
+    parse_info: &ParseInfo,
+    attribute_type: AttributeType,
+    formats: &AttributePriority,
+) -> Option<Attribute> {
     for format in &formats.priority {
         let attribute = match format {
             MetadataType::OpenGraph => OpenGraph::parse_attribute(parse_info, attribute_type),
             MetadataType::SchemaOrg => SchemaOrg::parse_attribute(parse_info, attribute_type),
-            MetadataType::Doi       => Doi::parse_attribute(parse_info, attribute_type)
+            MetadataType::Doi => Doi::parse_attribute(parse_info, attribute_type)
         };
         if attribute.is_some() {
-            return attribute
+            return attribute;
         }
     }
 
@@ -105,7 +120,10 @@ impl AttributeCollection {
     /// Initialize an [`AttributeCollection`] from the supplied
     /// [`AttributeConfig`] and [`HTML`].
     pub fn initialize(config: &AttributeConfig, parse_info: &ParseInfo) -> Self {
-        Self { attributes: HashMap::new() }.add_all(config, parse_info)
+        Self {
+            attributes: HashMap::new(),
+        }
+        .add_all(config, parse_info)
     }
 
     /// Retrieves an [`Attribute`] reference from the collection.
@@ -114,9 +132,18 @@ impl AttributeCollection {
     }
 
     /// Adds a single [`Attribute`] to the collection.
-    fn add(mut self, attribute_type: AttributeType, config: &AttributeConfig, parse_info: &ParseInfo) -> Self {
+    fn add(
+        mut self,
+        attribute_type: AttributeType,
+        config: &AttributeConfig,
+        parse_info: &ParseInfo,
+    ) -> Self {
         let priorities = config.get(attribute_type);
-        let attribute = parse(parse_info, attribute_type, &priorities.clone().unwrap_or_default());
+        let attribute = parse(
+            parse_info,
+            attribute_type,
+            &priorities.clone().unwrap_or_default(),
+        );
         self.insert_if(attribute_type, attribute);
 
         self

@@ -1,15 +1,19 @@
 //! Generator responsible for producing a [`Reference`]
 
+use deepl_api::{DeepL, Error as DeepLError, TranslatableTextList};
 use std::result;
 
 use chrono::{NaiveDateTime, DateTime, Utc, ParseError};
-use deepl_api::{DeepL, TranslatableTextList, Error as DeepLError};
 use serde::Deserialize;
 use serde_json::Value;
 use strum::{EnumIter, EnumCount};
 use thiserror::Error;
 
 use crate::attribute::{Attribute, AttributeType, Date, Translation};
+
+use serde::Serialize;
+
+use crate::curl::CurlError;
 use crate::doi::DoiError;
 use crate::parser::{AttributeCollection, ParseInfo};
 use crate::reference::Reference;
@@ -22,17 +26,23 @@ type GenerationResult<T> = result::Result<T, ReferenceGenerationError>;
 /// wrapped in this enum.
 #[derive(Error, Debug)]
 pub enum ReferenceGenerationError {
-    #[error("URL failed to parse")]
-    URLParseError(#[from] std::io::Error),
+    #[error("curl GET failed")]
+    CurlError(#[from] CurlError),
+
+    #[error("All provided parsers failed")]
+    ParseFailure,
+
+    #[error("Parser was skipped")]
+    ParseSkip,
+
+    #[error("HTML failed to parse")]
+    HTMLParseError(#[from] std::io::Error),
 
     #[error("DeepL translation failed")]
     DeepLError(#[from] DeepLError),
 
     #[error("Title translation procedure failed")]
     TranslationError,
-
-    #[error("Environment variable not found")]
-    VarError(#[from] std::env::VarError),
 
     #[error("Retrieving DOI failed")]
     DoiError(#[from] DoiError),
@@ -53,7 +63,9 @@ pub enum ArchiveError {
     ByteConversionError(#[from] std::string::FromUtf8Error)
 }
 
-#[derive(Default, Clone, Copy, PartialEq, EnumIter, EnumCount, Eq, Hash)]
+#[derive(
+    Default, Debug, Clone, Copy, PartialEq, EnumIter, EnumCount, Eq, Hash, Serialize, Deserialize,
+)]
 pub enum MetadataType {
     #[default]
     OpenGraph,
@@ -91,31 +103,35 @@ impl Default for ArchiveOptions {
 }
 
 pub mod attribute_config {
+    use std::collections::{HashMap, HashSet};
+
     use derive_builder::Builder;
+    use serde::{Deserialize, Serialize};
 
     use super::MetadataType;
     use crate::attribute::AttributeType;
 
-    #[derive(Clone)]
+    #[derive(Clone, Serialize, Deserialize, Debug)]
     pub struct AttributePriority {
-        pub priority: Vec<MetadataType>
+        pub priority: Vec<MetadataType>,
     }
+
     impl Default for AttributePriority {
         fn default() -> Self {
             Self {
-                priority: vec!(MetadataType::SchemaOrg, MetadataType::OpenGraph),
+                priority: vec![MetadataType::OpenGraph, MetadataType::SchemaOrg],
             }
         }
     }
     impl AttributePriority {
         pub fn new(priority: &[MetadataType]) -> Self {
             Self {
-                priority: priority.to_vec()
+                priority: priority.to_vec(),
             }
         }
     }
 
-    #[derive(Default, Builder, Clone)]
+    #[derive(Default, Builder, Clone, Serialize, Deserialize, Debug)]
     #[builder(setter(into, strip_option), default)]
     pub struct AttributeConfig {
         pub title: Option<AttributePriority>,
@@ -139,12 +155,16 @@ pub mod attribute_config {
                 .title(priority.clone())
                 .authors(priority.clone())
                 .date(priority.clone())
+                .archive_date(priority.clone())
                 .language(priority.clone())
                 .locale(priority.clone())
                 .site(priority.clone())
                 .url(priority.clone())
+                .archive_url(priority.clone())
                 .journal(priority.clone())
                 .publisher(priority.clone())
+                .institution(priority.clone())
+                .volume(priority.clone())
                 .build()
                 .unwrap()
         }
@@ -167,12 +187,38 @@ pub mod attribute_config {
                 AttributeType::Institution => &self.institution,
             }
         }
+
+        /// Finds the parsers used.
+        /// Serialize to JSON, deserialize back to a HashMap. This allows us to iterate over all fields.
+        /// This is important because if additional fields of AttributeConfig are added, this function will
+        /// still work.
+        pub fn parsers_used(&self) -> Vec<MetadataType> {
+            let json_string = serde_json::to_string(self).unwrap();
+            let map: HashMap<String, Option<AttributePriority>> =
+                serde_json::from_str(&json_string).unwrap();
+            
+
+            let flattened_map: Vec<MetadataType> = map
+                .values()
+                .into_iter()
+                .map(|a| a.clone().unwrap_or_default().priority)
+                .collect::<Vec<Vec<MetadataType>>>()
+                .concat();
+
+            println!("{:?}", flattened_map);
+
+            flattened_map
+                .into_iter()
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .collect()
+        }
     }
 }
 
 /// Generates a [`Reference`] from a URL.
 pub fn from_url(url: &str, options: &GenerationOptions) -> GenerationResult<Reference> {
-    let parse_info = ParseInfo::from_url(url)?;
+    let parse_info = ParseInfo::from_url(url, &options.attribute_config.parsers_used())?;
     create_reference(&parse_info, &options)
 }
 
@@ -227,14 +273,12 @@ fn translate_title(title: &Option<Attribute>, options: &TranslationOptions) -> G
     // proceed with translation. Otherwise, throw an error.
     if let Some(Attribute::Title(content)) = title {
         let text = translate(content, &options)?;
-        let translation_attribute = Attribute::TranslatedTitle(
-            Translation {
-                text,
-                // We can safely unwrap here as the call to translate()
-                // would've already failed if no target language was provided.
-                language: options.target.clone().unwrap()
-            }
-        );
+        let translation_attribute = Attribute::TranslatedTitle(Translation {
+            text,
+            // We can safely unwrap here as the call to translate()
+            // would've already failed if no target language was provided.
+            language: options.target.clone().unwrap(),
+        });
         Ok(translation_attribute)
     } else {
         Err(ReferenceGenerationError::TranslationError)
@@ -248,8 +292,11 @@ fn translate<'a>(content: &'a str, options: &TranslationOptions) -> GenerationRe
 
     let texts = TranslatableTextList {
         source_language: options.source.clone(),
-        target_language: options.target.clone().ok_or(ReferenceGenerationError::TranslationError)?,
-        texts: vec!(content.to_string()),
+        target_language: options
+            .target
+            .clone()
+            .ok_or(ReferenceGenerationError::TranslationError)?,
+        texts: vec![content.to_string()],
     };
 
     let translated = deepl.translate(None, texts)?;
@@ -316,4 +363,35 @@ fn parse_wayback_timestamp(timestamp: &str) -> Result<DateTime<Utc>, ParseError>
     let datetime_utc: DateTime<Utc> = DateTime::from_naive_utc_and_offset(naive_datetime, Utc);
 
     Ok(datetime_utc)
+}
+#[cfg(test)]
+mod test {
+    use super::{
+        attribute_config::{AttributeConfig, AttributePriority},
+        MetadataType,
+    };
+
+    #[test]
+    fn test_get_unique_parsers() {
+        let expected = vec![MetadataType::OpenGraph, MetadataType::Doi];
+        let config = AttributeConfig::new(AttributePriority {
+            priority: expected.clone(),
+        });
+        let result = config.parsers_used();
+
+        assert_eq!(expected.len(), result.len());
+        assert!(expected.iter().all(|item| result.contains(item)));
+    }
+
+    // Tests that the default implementation is used and is functional. If default parsers are changed,
+    // this test must be changed to match.
+    #[test]
+    fn test_attribute_config_default() {
+        let expected = vec![MetadataType::OpenGraph, MetadataType::SchemaOrg];
+        let config = AttributeConfig::default();
+        let result = config.parsers_used();
+
+        assert_eq!(expected.len(), result.len());
+        assert!(expected.iter().all(|item| result.contains(item)));
+    }
 }
