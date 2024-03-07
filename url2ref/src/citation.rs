@@ -57,14 +57,14 @@ impl WikiCitation {
         let ymd_pattern = "%Y-%m-%d";
 
         fn format(input: String) -> String {
-            format!("|date={}", input)
+            format!("{}", input)
         }
 
         match date {
             Date::DateTime(dt) => format(dt.format(ymd_pattern).to_string()),
             Date::YearMonthDay(nd) => format(nd.format(ymd_pattern).to_string()),
-            Date::YearMonth { year, month } => format!("|date={}-{}", year, month),
-            Date::Year(year) => format!("|date={}", year),
+            Date::YearMonth { year, month } => format!("{}-{}", year, month),
+            Date::Year(year) => format!("{}", year),
         }
     }
 
@@ -86,10 +86,12 @@ impl CitationBuilder for WikiCitation {
             Attribute::Title(val) => Some(format!("|title={}", val.to_string())),
             Attribute::TranslatedTitle(trans) => Some(format!("|trans-title={} |language={}", trans.text, trans.language)),
             Attribute::Authors(vals) => Some(self.handle_authors(vals)),
-            Attribute::Date(val) => Some(self.handle_date(val)),
+            Attribute::Date(val) => Some(format!("|date={}", self.handle_date(val))),
+            Attribute::ArchiveDate(val) => Some(format!("|archive-date={}", self.handle_date(val))),
             Attribute::Language(val) => Some(format!("|language={}", val.to_string())),
             Attribute::Site(val) => Some(format!("|site={}", val.to_string())),
             Attribute::Url(val) => Some(format!("|url={}", val.to_string())),
+            Attribute::ArchiveUrl(val) => Some(format!("|archive-url={}", val.to_string())),
             Attribute::Journal(val) => Some(format!("|journal={}", val.to_string())),
             Attribute::Publisher(val) => Some(format!("|publisher={}", val.to_string())),
             _ => None

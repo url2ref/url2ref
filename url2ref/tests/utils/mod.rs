@@ -178,6 +178,7 @@ pub fn compared_attributes_with_expected(
         language,
         site,
         url,
+        ..
     } = reference
     {
         for attribute in expected_attributes {
