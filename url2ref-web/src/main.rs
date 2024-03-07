@@ -1,5 +1,7 @@
 mod form;
 mod scss;
+use std::env;
+
 use form::{CITATION_FORMATS, LANGUAGE_CODES};
 use rocket::form::Form;
 use scss::compile;
@@ -10,10 +12,15 @@ use rocket::{catch, catchers, get, launch, post, routes, uri};
 use rocket_dyn_templates::Template;
 use tera::Context;
 use url2ref::generator::attribute_config::AttributeConfig;
-use url2ref::generator::TranslationOptions;
+use url2ref::generator::{ArchiveOptions, TranslationOptions};
 use url2ref::{generate, GenerationOptions};
 
 use crate::form::{ReferenceInput, BIBTEX_FORMAT, WIKI_FORMAT};
+
+mod env_vars {
+    pub const DEEPL_API_KEY: &str = "DEEPL_API_KEY";
+}
+
 
 #[catch(404)]
 fn not_found() -> Redirect {
@@ -38,7 +45,8 @@ fn submit_url(input: Form<ReferenceInput>) -> Template {
     println!("{:?}", input);
 
     let mut context = Context::new();
-    let deepl_key = None;
+
+    let deepl_key = env::var(env_vars::DEEPL_API_KEY).ok();
 
     let translation_options = TranslationOptions {
         source: Some(input.source_lang.clone()),
@@ -47,10 +55,16 @@ fn submit_url(input: Form<ReferenceInput>) -> Template {
     };
 
     let attribute_config = AttributeConfig::default();
+    
+    let archive_options = ArchiveOptions {
+        include_archived: input.archive,
+        perform_archival: false
+    };
 
     let generation_options = GenerationOptions {
         attribute_config,
         translation_options,
+        archive_options
     };
 
     let reference_option = generate(&input.url, &generation_options);
