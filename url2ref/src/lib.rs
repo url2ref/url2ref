@@ -23,7 +23,6 @@ mod curl;
 mod citation;
 mod parser;
 mod reference;
-mod utils;
 
 use generator::{attribute_config::{AttributeConfig, AttributeConfigBuilder}, TranslationOptions, ReferenceGenerationError, ArchiveOptions};
 pub use reference::*;

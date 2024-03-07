@@ -18,7 +18,7 @@ use crate::doi::DoiError;
 use crate::parser::{AttributeCollection, ParseInfo};
 use crate::reference::Reference;
 use crate::GenerationOptions;
-use crate::utils;
+use crate::curl;
 
 type GenerationResult<T> = result::Result<T, ReferenceGenerationError>;
 
@@ -54,7 +54,7 @@ pub enum ReferenceGenerationError {
 #[derive(Error, Debug)]
 pub enum ArchiveError {
     #[error("Wayback Machine API call failed")]
-    CurlError(#[from] curl::Error),
+    CurlError(#[from] curl::CurlError),
 
     #[error("Couldn't deserialize JSON into WaybackSnapshot struct")]
     DeserializeError(#[from] serde_json::Error),
@@ -91,6 +91,7 @@ pub struct ArchiveOptions {
     pub include_archived: bool,
     /// Whether to attempt perform the archive operation if the site
     /// hasn't been archived yet.
+    /// TODO: implement this
     pub perform_archival: bool,
 }
 impl Default for ArchiveOptions {
@@ -344,7 +345,7 @@ fn call_wayback_api(url: &str, timestamp_option: &Option<&str>) -> Result<Waybac
     // If timestamp provided, fetch the archived URL closest to the timestamp.
     let timestamp = timestamp_option.unwrap_or_default();
     let request_url = format!("http://archive.org/wayback/available?url={url}&timestamp={timestamp}");
-    let response = utils::get_response_as_string(&request_url)?;
+    let response = curl::get(&request_url, None, false)?;
     
     // Extract snapshot information for the closest retrieved snapshot.
     let snapshot_info = &serde_json::from_str::<Value>(&response)?["archived_snapshots"]["closest"];
@@ -366,9 +367,10 @@ fn parse_wayback_timestamp(timestamp: &str) -> Result<DateTime<Utc>, ParseError>
 }
 #[cfg(test)]
 mod test {
+    use crate::attribute::Attribute;
+
     use super::{
-        attribute_config::{AttributeConfig, AttributePriority},
-        MetadataType,
+        attribute_config::{AttributeConfig, AttributePriority}, fetch_archive_info, ArchiveOptions, MetadataType
     };
 
     #[test]
@@ -393,5 +395,20 @@ mod test {
 
         assert_eq!(expected.len(), result.len());
         assert!(expected.iter().all(|item| result.contains(item)));
+    }
+
+    #[test]
+    fn test_archive_url() {
+        let url = "https://www.information.dk/kultur/2018/01/casper-mandrilaftalen-burde-lade-goere-gjorde";
+        let url_attribute = Some(Attribute::Url(url.to_string()));
+        let archive_options = ArchiveOptions::default();
+        
+        // Timestamp is difficult to test for, so it is not needed for now.
+        let (url_result, _) = fetch_archive_info(&url_attribute, &archive_options);
+        
+        let expected_archive_url = "http://web.archive.org/web/20211026003805/https://www.information.dk/kultur/2018/01/casper-mandrilaftalen-burde-lade-goere-gjorde";
+        let expected_archive_url_attribute = Some(Attribute::ArchiveUrl(expected_archive_url.to_string()));
+        
+        assert_eq!(url_result, expected_archive_url_attribute);
     }
 }
