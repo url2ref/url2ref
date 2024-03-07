@@ -23,14 +23,15 @@ pub struct MetadataKey {
     pub key: &'static str,
 }
 
-pub struct ParseInfo {
+pub struct ParseInfo<'a> {
+    pub url: Option<&'a str>,
     pub raw_html: String,
     pub html: Option<HTML>,
     pub bibliography: Option<Bibliography>,
 }
 
-impl ParseInfo {
-    pub fn from_url(url: &str, parsers: &[MetadataType]) -> Result<ParseInfo> {
+impl ParseInfo<'_> {
+    pub fn from_url<'a>(url: &'a str, parsers: &[MetadataType]) -> Result<ParseInfo<'a>> {
         use MetadataType::*;
         let raw_html = get_html(url)?;
 
@@ -45,6 +46,7 @@ impl ParseInfo {
         }
 
         Ok(ParseInfo {
+            url: Some(url),
             raw_html: raw_html,
             html: html.ok(),
             bibliography: bib.ok()
@@ -58,6 +60,7 @@ impl ParseInfo {
         let html = parse_html_from_string(raw_html.clone(), &true)?;
 
         Ok(ParseInfo {
+            url: None,
             raw_html: raw_html,
             html: Some(html),
             bibliography: None

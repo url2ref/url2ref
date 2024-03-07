@@ -5,7 +5,7 @@ use std::env::VarError;
 
 use clap::{Parser, ValueEnum};
 
-use url2ref::generator::TranslationOptions;
+use url2ref::generator::{TranslationOptions, ArchiveOptions};
 use url2ref::generator::attribute_config::{AttributeConfig, AttributePriority};
 use url2ref::*;
 
@@ -31,6 +31,9 @@ struct CommandLineArgs {
 
     #[clap(short, long, default_value=None)]
     target_lang: Option<String>,
+
+    #[clap(short, long, default_value_t=true)]
+    include_archived: bool,
 }
 
 /// Supported citation formats.
@@ -78,9 +81,12 @@ fn main() {
         AttributeConfig::default()
     };
 
+    let archive_options = ArchiveOptions::default();
+
     let generation_options = GenerationOptions {
         attribute_config,
-        translation_options
+        translation_options,
+        archive_options
     };
 
     let reference = generate(&query, &generation_options).unwrap();

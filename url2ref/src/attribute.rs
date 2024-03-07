@@ -1,7 +1,7 @@
 //! Definitions for attributes and the types used for mapping them to
 //! their corresponding keys in different metadata formats.
 
-use chrono::{NaiveDate, DateTime};
+use chrono::{NaiveDate, DateTime, Utc};
 use strum::EnumIter;
 
 /// Types of attributes contained in a [`crate::reference::Reference`].
@@ -15,7 +15,9 @@ pub enum AttributeType {
    Language,
    Site,
    Date,
+   ArchiveDate,
    Url,
+   ArchiveUrl,
    Type,
    Journal,
    Publisher,
@@ -31,10 +33,12 @@ pub enum Attribute {
     TranslatedTitle(Translation),
     Authors(Vec<Author>),
     Date(Date),
+    ArchiveDate(Date),
     Language(String),
     Locale(String),
     Site(String),
     Url(String),
+    ArchiveUrl(String),
     Type(String),
     Journal(String),
     Publisher(String),
@@ -62,7 +66,7 @@ pub struct Translation {
 /// DateTimes and partially complete dates.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Date {
-    DateTime(DateTime<chrono::Utc>),
+    DateTime(DateTime<Utc>),
     YearMonthDay(NaiveDate),
     YearMonth {
         year:  i32,
