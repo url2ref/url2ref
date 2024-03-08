@@ -5,6 +5,7 @@ $color-mode-type: data;
 
 body {
     min-height:100vh;
+    text-align: center;
 }
 
 .center {
@@ -24,6 +25,23 @@ body {
     width:200px;
     height:80px;
 }
+
+.my-card {
+  padding-top: 2%;
+  max-width: 75%;
+}
+
+.container {
+  justify-content: center;
+  align-items: center;
+}
+
+body > * { text-align: left; }
+     /* left-align the CONTENTS all items within body, additionally
+        you can add this text-align: left property to all elements
+        manually */
+form { display: inline-block; }
+     /* reduces the width of the form to only what is necessary */
 
 @keyframes slide-url {
     0% {

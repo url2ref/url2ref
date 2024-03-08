@@ -1,49 +1,24 @@
 {% extends "layout" %}
 
 {% block content %}
+<div class="container d-flex flex-column justify-content-center">
+  <div class="form w-75">
 
-<div class="center">
+  <form class="w-100" action="/submit_url" method="post" id="url_form">
 
-  <form action="/submit_url" method="post" id="url_form">
     <div class="row">
-      <div class="col-sm-6">
+      <div class="col-md-8">
         <div class="form-group">
           <input type="url" class="form-control" name="url" placeholder="https://github.com/url2ref/url2ref" value="{{current_url}}">
         </div>
       </div>
       
-      <div class="col-auto">
-        <select class="form-select" name="source_lang" id="form-control-select1">
-        
-          {% for language_code in language_codes %}
-            {% if language_code == "en" %}
-              <option selected="selected">{{ language_code }}</option>
-            {% else %}
-              <option>{{ language_code }}</option>
-            {% endif %}
-          {% endfor %}
 
-        </select>
-      </div>
 
-      <div class="col-auto">
-        <select class="form-select" name="target_lang" id="form-control-select2">
-        
-          {% for language_code in language_codes %}
-            {% if language_code == "en" %}
-              <option selected="selected">{{ language_code }}</option>
-            {% else %}
-              <option>{{ language_code }}</option>
-            {% endif %}
-          {% endfor %}
-
-        </select>
-      </div>
-
-      <div class="col-sm-auto">
+      <div class="col-md-auto">
         <select class="form-select" name="format" id="form-control-select3">
           {% for citation_format in citation_formats %}
-            {% if citation_format == "Wiki" %}
+            {% if citation_format == current_format %}
               <option selected="selected">{{ citation_format }}</option>
             {% else %}
               <option>{{ citation_format }}</option>
@@ -52,21 +27,71 @@
         </select>
       </div>
       
-      <div class="col-auto">
-        <div class="form-check position-static">
-          <input class="form-check-input" type="checkbox" name="archive">
-        </div>
-      </div>
 
-
-      <div class="col-sm-2">
+      <div class="col-md-auto">
         <button type="submit" class="btn btn-primary">Submit</button>
       </div>
       
     </div>
-  </form>
+    
+    <div class="row">
 
-  <div class="pb-4">
+    
+      <div class="col-auto">
+        <div class="form-group">
+
+        <label for="form-control-select-source">Source</label>
+        <select class="form-select" name="source_lang" id="form-control-select-source">
+        
+          {% for language_code in language_codes %}
+            {% if language_code == "en" %}
+              <option selected="selected">{{ language_code }}</option>
+            {% else %}
+              <option>{{ language_code }}</option>
+            {% endif %}
+          {% endfor %}
+
+        </select>
+
+          
+        </div>
+      </div>
+
+      <div class="col-auto">
+        <div class="form-group">
+          
+          <label for="form-control-select-target">Target</label>
+          <select class="form-select" name="target_lang" id="form-control-select-target">
+          
+            {% for language_code in language_codes %}
+              {% if language_code == "en" %}
+                <option selected="selected">{{ language_code }}</option>
+              {% else %}
+                <option>{{ language_code }}</option>
+              {% endif %}
+            {% endfor %}
+
+          </select>
+        </div>
+      </div>
+      
+      <div class="col-auto">
+        <div class="form-group">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="archive" id="form-check-archive">
+            <label class="form-check-label" for="form-check-archive">
+              Archive
+            </label>
+          
+        </div>
+      </div>
+
+    </div>
+  </form>
+  </div>
+ </div> 
+
+  <div class="my-card">
     {% if reference_output %}
       <div class="card">
         <div class="card-header">
@@ -98,7 +123,4 @@
       </div>
     {% endif %}
   </div>
-
-  
-</div>
 {% endblock content %}

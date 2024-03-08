@@ -27,8 +27,9 @@ fn not_found() -> Redirect {
     Redirect::to(uri!(home))
 }
 
-fn render_home(mut context: Context, current_url: &String) -> Template {
+fn render_home(mut context: Context, current_url: &String, current_format: &String) -> Template {
     context.insert("current_url", &current_url);
+    context.insert("current_format", &current_format);
     context.insert("language_codes", LANGUAGE_CODES);
     context.insert("citation_formats", CITATION_FORMATS);
 
@@ -37,7 +38,7 @@ fn render_home(mut context: Context, current_url: &String) -> Template {
 
 #[get("/")]
 fn home() -> Template {
-    render_home(Context::new(), &"".to_string())
+    render_home(Context::new(), &"".to_string(), &"".to_string())
 }
 
 #[post("/submit_url", data = "<input>")]
@@ -79,7 +80,7 @@ fn submit_url(input: Form<ReferenceInput>) -> Template {
         context.insert("reference_output", &output);
     };
 
-    render_home(context, &input.url)
+    render_home(context, &input.url, &input.format)
 }
 
 #[launch]
