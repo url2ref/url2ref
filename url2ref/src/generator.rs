@@ -318,7 +318,11 @@ struct WaybackSnapshot {
 
 /// Attempt to fetch archive information from the Wayback Machine and
 /// construct an archive URL and date.
-fn fetch_archive_info(url: &Option<Attribute>, _options: &ArchiveOptions) -> (Option<Attribute>, Option<Attribute>) {
+fn fetch_archive_info(url: &Option<Attribute>, options: &ArchiveOptions) -> (Option<Attribute>, Option<Attribute>) {
+    if !options.include_archived {
+        return (None, None)
+    }
+
     // If URL specified, attempt to fetch archived URL.
     if let Some(Attribute::Url(url_str)) = url {
         let wayback_snapshot = call_wayback_api(url_str, &None).ok();
@@ -332,10 +336,10 @@ fn fetch_archive_info(url: &Option<Attribute>, _options: &ArchiveOptions) -> (Op
             )
         });
 
-        (url_attribute, date_attribute)
-    } else {
-        (None, None)
-    }
+        return (url_attribute, date_attribute)
+    } 
+    
+    (None, None)
 }
 
 /// Send a query for a URL to the Wayback Machine API and return the closest snapshot.
@@ -408,5 +412,19 @@ mod test {
         let expected_archive_url_attribute = Some(Attribute::ArchiveUrl(expected_archive_url.to_string()));
         
         assert_eq!(url_result, expected_archive_url_attribute);
+    }
+
+    #[test]
+    fn test_archive_url_disabled() {
+        let url = "https://www.information.dk/kultur/2018/01/casper-mandrilaftalen-burde-lade-goere-gjorde";
+        let url_attribute = Some(Attribute::Url(url.to_string()));
+        let archive_options = ArchiveOptions {
+            include_archived: false,
+            perform_archival: false
+        };
+        
+        // Timestamp is difficult to test for, so it is not needed for now.
+        let (url_result, _) = fetch_archive_info(&url_attribute, &archive_options);
+        assert_eq!(url_result, None);
     }
 }
