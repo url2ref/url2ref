@@ -7,7 +7,7 @@
   <form class="w-100" action="/submit_url" method="post" id="url_form">
 
     <div class="row">
-      <div class="col-md-8">
+      <div class="col">
         <div class="form-group">
           <input type="url" class="form-control" name="url" placeholder="https://github.com/url2ref/url2ref" value="{{current_url}}">
         </div>
