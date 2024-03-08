@@ -5,7 +5,8 @@
     <strong>Automatic reference generation for web resources</strong>
   </p>
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) ![build](https://img.shields.io/github/actions/workflow/status/url2ref/url2ref/build_and_test.yml)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) ![CI](https://img.shields.io/github/actions/workflow/status/url2ref/url2ref/.github%2Fworkflows%2Fci.yml?label=CI)
+
 </div>
 
 ## Motivation
