@@ -1,0 +1,10 @@
+target/
+Cargo.lock
+
+url2ref-web/static/css
+url2ref-web/static/icons
+url2ref-web/static/js
+url2ref-web/static/popper
+url2ref-web/static/scss
+url2ref-web/npm/node_modules
+url2ref-web/npm/package-lock.json
