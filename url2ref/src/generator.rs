@@ -206,8 +206,6 @@ pub mod attribute_config {
                 .collect::<Vec<Vec<MetadataType>>>()
                 .concat();
 
-            println!("{:?}", flattened_map);
-
             flattened_map
                 .into_iter()
                 .collect::<HashSet<_>>()
