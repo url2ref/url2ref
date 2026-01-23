@@ -8,6 +8,7 @@ use crate::curl::get_html;
 use crate::doi::{self, Doi};
 use crate::generator::attribute_config::{AttributeConfig, AttributePriority};
 use crate::generator::{MetadataType, ReferenceGenerationError};
+use crate::html_meta::HtmlMeta;
 use crate::opengraph::OpenGraph;
 use crate::schema_org::SchemaOrg;
 
@@ -102,6 +103,7 @@ fn parse(
         let attribute = match format {
             MetadataType::OpenGraph => OpenGraph::parse_attribute(parse_info, attribute_type),
             MetadataType::SchemaOrg => SchemaOrg::parse_attribute(parse_info, attribute_type),
+            MetadataType::HtmlMeta => HtmlMeta::parse_attribute(parse_info, attribute_type),
             MetadataType::Doi => Doi::parse_attribute(parse_info, attribute_type)
         };
         if attribute.is_some() {

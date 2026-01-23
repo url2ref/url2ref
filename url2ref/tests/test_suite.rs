@@ -9,6 +9,18 @@ use utils::{get_file_pairs, get_expected_results, compared_attributes_with_expec
 
 const DATA_SAMPLES_PATH: &str = "./tests/data";
 
+/// Create generation options with archive fetching disabled (for testing)
+fn test_generation_options(priorities: AttributePriority) -> GenerationOptions {
+    GenerationOptions {
+        attribute_config: AttributeConfig::new(priorities),
+        translation_options: TranslationOptions::default(),
+        archive_options: ArchiveOptions {
+            include_archived: false,
+            perform_archival: false,
+        },
+    }
+}
+
 /// Performs testing for all the external HTML data samples by comparing the
 /// reference generation output to the expected values associated with each
 /// test sample.
@@ -32,24 +44,19 @@ fn check(html_path: &str, expected_results_path: &str) {
         let generation_options = match metadata_parser {
             OpenGraph => {
                 let priorities = AttributePriority { priority: vec!(OpenGraph)};
-                GenerationOptions {
-                    attribute_config: AttributeConfig::new(priorities),
-                    ..Default::default()
-                }
+                test_generation_options(priorities)
             },
             SchemaOrg => {
                 let priorities = AttributePriority { priority: vec!(SchemaOrg)};
-                GenerationOptions {
-                    attribute_config: AttributeConfig::new(priorities),
-                    ..Default::default()
-                }
+                test_generation_options(priorities)
             },
             Doi => {
                 let priorities = AttributePriority { priority: vec!(Doi)};
-                GenerationOptions {
-                    attribute_config: AttributeConfig::new(priorities),
-                    ..Default::default()
-                }
+                test_generation_options(priorities)
+            },
+            HtmlMeta => {
+                let priorities = AttributePriority { priority: vec!(HtmlMeta)};
+                test_generation_options(priorities)
             }
         };
 

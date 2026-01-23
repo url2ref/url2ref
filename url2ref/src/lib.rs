@@ -18,6 +18,7 @@ pub mod attribute;
 pub mod generator;
 mod schema_org;
 mod opengraph;
+mod html_meta;
 mod doi;
 mod curl;
 mod citation;

@@ -144,6 +144,17 @@ impl BibTeXCitation {
         output
     }
 
+    fn handle_date_value(&self, date: &Date) -> String {
+        let ymd_pattern = "%Y-%m-%d";
+
+        match date {
+            Date::DateTime(dt) => dt.format(ymd_pattern).to_string(),
+            Date::YearMonthDay(nd) => nd.format(ymd_pattern).to_string(),
+            Date::YearMonth { year, month } => format!("{}-{:02}", year, month),
+            Date::Year(year) => format!("{}", year),
+        }
+    }
+
     fn handle_date(&self, date: &Date) -> String {
         let ymd_pattern = "%Y-%m-%d";
 
@@ -174,10 +185,16 @@ impl CitationBuilder for BibTeXCitation {
 
     fn add(mut self,  attribute: &Attribute) -> Self {
         let result_option = match attribute {
-            Attribute::Title(val)    => Some(format!("title = \"{}\"", val.to_string())),
-            Attribute::Authors(vals) => Some(self.handle_authors(vals)),
-            Attribute::Date(val)     => Some(self.handle_date(val)),
-            Attribute::Url(val)      => Some(format!("url = \\url{{{}}}", val.to_string())),
+            Attribute::Title(val)      => Some(format!("title = \"{}\"", val.to_string())),
+            Attribute::Authors(vals)   => Some(self.handle_authors(vals)),
+            Attribute::Date(val)       => Some(self.handle_date(val)),
+            Attribute::Url(val)        => Some(format!("url = \\url{{{}}}", val.to_string())),
+            Attribute::Site(val)       => Some(format!("howpublished = \"{}\"", val.to_string())),
+            Attribute::Publisher(val)  => Some(format!("publisher = \"{}\"", val.to_string())),
+            Attribute::Language(val)   => Some(format!("language = \"{}\"", val.to_string())),
+            Attribute::Journal(val)    => Some(format!("journal = \"{}\"", val.to_string())),
+            Attribute::ArchiveUrl(val) => Some(format!("archiveurl = \\url{{{}}}", val.to_string())),
+            Attribute::ArchiveDate(val) => Some(format!("archivedate = \"{}\"", self.handle_date_value(val))),
             _ => None
         };
 

@@ -2,6 +2,149 @@
 
 {% block content %}
 <div class="pb-4">
-  <p>Hello, world!</p>
+  <!-- URL Input Section -->
+  <div class="row justify-content-center mt-4">
+    <div class="col-md-8 col-lg-6">
+      <div class="input-group">
+        <input 
+          type="url" 
+          class="form-control form-control-lg" 
+          id="url-input" 
+          placeholder="Enter a URL (e.g., https://example.com/article)"
+          aria-label="URL input"
+        >
+        <button class="btn btn-primary btn-lg" type="button" id="generate-btn">
+          <span id="btn-text">Generate</span>
+          <span id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div class="form-text text-center mt-2">
+        Paste a URL to generate a citation reference
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  <div class="row justify-content-center mt-3">
+    <div class="col-md-8 col-lg-6">
+      <div class="alert alert-danger d-none" id="error-alert" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span id="error-message"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reference Details Section (Intermediary View) -->
+  <div class="row justify-content-center mt-4 d-none" id="details-section">
+    <div class="col-md-10 col-lg-8">
+      <div class="card bg-dark border-secondary mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-list-ul me-2"></i>Extracted Reference Details</span>
+        </div>
+        <div class="card-body">
+          <table class="table table-dark table-sm mb-0">
+            <tbody>
+              <tr id="field-title" class="d-none">
+                <th scope="row" style="width: 120px;">Title</th>
+                <td id="field-title-value"></td>
+              </tr>
+              <tr id="field-author" class="d-none">
+                <th scope="row">Author</th>
+                <td id="field-author-value"></td>
+              </tr>
+              <tr id="field-date" class="d-none">
+                <th scope="row">Date</th>
+                <td id="field-date-value"></td>
+              </tr>
+              <tr id="field-site" class="d-none">
+                <th scope="row">Site</th>
+                <td id="field-site-value"></td>
+              </tr>
+              <tr id="field-publisher" class="d-none">
+                <th scope="row">Publisher</th>
+                <td id="field-publisher-value"></td>
+              </tr>
+              <tr id="field-language" class="d-none">
+                <th scope="row">Language</th>
+                <td id="field-language-value"></td>
+              </tr>
+              <tr id="field-url" class="d-none">
+                <th scope="row">URL</th>
+                <td id="field-url-value" class="text-break"></td>
+              </tr>
+              <tr id="field-archive-url">
+                <th scope="row">Archive URL</th>
+                <td id="field-archive-url-value" class="text-break">
+                  <span id="archive-url-text"></span>
+                  <span id="archive-url-loading" class="d-none">
+                    <span class="spinner-border spinner-border-sm text-info me-2" role="status"></span>
+                    <span class="text-muted">Creating archive...</span>
+                  </span>
+                  <span id="archive-url-pending" class="d-none">
+                    <span class="text-warning"><i class="bi bi-clock me-1"></i>No archive found</span>
+                    <button class="btn btn-outline-info btn-sm ms-2" id="create-archive-btn">
+                      <i class="bi bi-archive me-1"></i>Create Archive
+                    </button>
+                  </span>
+                </td>
+              </tr>
+              <tr id="field-archive-date">
+                <th scope="row">Archive Date</th>
+                <td id="field-archive-date-value">
+                  <span id="archive-date-text"></span>
+                  <span id="archive-date-loading" class="d-none">
+                    <span class="spinner-border spinner-border-sm text-info me-2" role="status"></span>
+                  </span>
+                  <span id="archive-date-pending" class="d-none text-muted">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Section -->
+  <div class="row justify-content-center mt-2 d-none" id="results-section">
+    <div class="col-md-10 col-lg-8">
+      <div class="card bg-dark border-secondary">
+        <div class="card-header">
+          <ul class="nav nav-tabs card-header-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="bibtex-tab" data-bs-toggle="tab" data-bs-target="#bibtex-panel" type="button" role="tab" aria-controls="bibtex-panel" aria-selected="true">
+                BibTeX
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="wiki-tab" data-bs-toggle="tab" data-bs-target="#wiki-panel" type="button" role="tab" aria-controls="wiki-panel" aria-selected="false">
+                Wiki
+              </button>
+            </li>
+          </ul>
+        </div>
+        <div class="card-body">
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="bibtex-panel" role="tabpanel" aria-labelledby="bibtex-tab">
+              <div class="position-relative">
+                <pre class="bg-black p-3 rounded"><code id="bibtex-output" class="text-light"></code></pre>
+                <button class="btn btn-outline-light btn-sm position-absolute top-0 end-0 m-2 copy-btn" data-target="bibtex-output" data-bs-toggle="tooltip" title="Copy to clipboard">
+                  <i class="bi bi-clipboard"></i> Copy
+                </button>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="wiki-panel" role="tabpanel" aria-labelledby="wiki-tab">
+              <div class="position-relative">
+                <pre class="bg-black p-3 rounded"><code id="wiki-output" class="text-light"></code></pre>
+                <button class="btn btn-outline-light btn-sm position-absolute top-0 end-0 m-2 copy-btn" data-target="wiki-output" data-bs-toggle="tooltip" title="Copy to clipboard">
+                  <i class="bi bi-clipboard"></i> Copy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock content %}

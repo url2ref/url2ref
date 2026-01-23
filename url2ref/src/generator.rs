@@ -70,6 +70,7 @@ pub enum MetadataType {
     #[default]
     OpenGraph,
     SchemaOrg,
+    HtmlMeta,
     Doi
 }
 
@@ -91,14 +92,13 @@ pub struct ArchiveOptions {
     pub include_archived: bool,
     /// Whether to attempt perform the archive operation if the site
     /// hasn't been archived yet.
-    /// TODO: implement this
     pub perform_archival: bool,
 }
 impl Default for ArchiveOptions {
     fn default() -> Self {
         Self {
             include_archived: true,
-            perform_archival: false,
+            perform_archival: true,
         }
     }
 }
@@ -120,7 +120,7 @@ pub mod attribute_config {
     impl Default for AttributePriority {
         fn default() -> Self {
             Self {
-                priority: vec![MetadataType::OpenGraph, MetadataType::SchemaOrg],
+                priority: vec![MetadataType::OpenGraph, MetadataType::SchemaOrg, MetadataType::HtmlMeta],
             }
         }
     }
@@ -205,8 +205,6 @@ pub mod attribute_config {
                 .map(|a| a.clone().unwrap_or_default().priority)
                 .collect::<Vec<Vec<MetadataType>>>()
                 .concat();
-
-            println!("{:?}", flattened_map);
 
             flattened_map
                 .into_iter()
@@ -320,6 +318,7 @@ struct WaybackSnapshot {
 
 /// Attempt to fetch archive information from the Wayback Machine and
 /// construct an archive URL and date.
+/// If no archive exists and `perform_archival` is true, attempt to create one.
 fn fetch_archive_info(url: &Option<Attribute>, options: &ArchiveOptions) -> (Option<Attribute>, Option<Attribute>) {
     if !options.include_archived {
         return (None, None)
@@ -327,7 +326,18 @@ fn fetch_archive_info(url: &Option<Attribute>, options: &ArchiveOptions) -> (Opt
 
     // If URL specified, attempt to fetch archived URL.
     if let Some(Attribute::Url(url_str)) = url {
+        // First, try to get an existing archive
         let wayback_snapshot = call_wayback_api(url_str, &None).ok();
+
+        // If no archive exists and perform_archival is enabled, try to create one
+        let wayback_snapshot = match wayback_snapshot {
+            Some(snapshot) => Some(snapshot),
+            None if options.perform_archival => {
+                // Try to save the page to the Wayback Machine
+                save_to_wayback(url_str).ok()
+            }
+            None => None,
+        };
 
         let url_attribute  = wayback_snapshot.as_ref().map(|snapshot| Attribute::ArchiveUrl(snapshot.url.clone()));
         let date_attribute = wayback_snapshot.as_ref().map(|snapshot| {
@@ -344,15 +354,47 @@ fn fetch_archive_info(url: &Option<Attribute>, options: &ArchiveOptions) -> (Opt
     (None, None)
 }
 
+/// Save a URL to the Wayback Machine using the Save Page Now (SPN) API.
+/// Returns a WaybackSnapshot if successful.
+fn save_to_wayback(url: &str) -> Result<WaybackSnapshot, ArchiveError> {
+    // Use the Wayback Machine's Save Page Now endpoint
+    let save_url = format!("https://web.archive.org/save/{}", url);
+    
+    // Make a request to save the page
+    // The response will redirect to the archived page
+    let _response = curl::get(&save_url, None, true)?;
+    
+    // After saving, fetch the latest snapshot which should be the one we just created
+    // Wait a moment for the archive to be indexed, then query for it
+    std::thread::sleep(std::time::Duration::from_secs(2));
+    
+    // Query for the newly created archive
+    call_wayback_api(url, &None)
+}
+
 /// Send a query for a URL to the Wayback Machine API and return the closest snapshot.
 fn call_wayback_api(url: &str, timestamp_option: &Option<&str>) -> Result<WaybackSnapshot, ArchiveError> {
-    // If timestamp provided, fetch the archived URL closest to the timestamp.
-    let timestamp = timestamp_option.unwrap_or_default();
-    let request_url = format!("http://archive.org/wayback/available?url={url}&timestamp={timestamp}");
+    // URL-encode the URL for the query parameter (handles special chars like ø → %C3%B8)
+    let encoded_url = urlencoding::encode(url);
+    
+    // Build the request URL, only including timestamp if provided
+    let request_url = match timestamp_option {
+        Some(ts) if !ts.is_empty() => format!("https://archive.org/wayback/available?url={encoded_url}&timestamp={ts}"),
+        _ => format!("https://archive.org/wayback/available?url={encoded_url}"),
+    };
+    
     let response = curl::get(&request_url, None, false)?;
     
     // Extract snapshot information for the closest retrieved snapshot.
-    let snapshot_info = &serde_json::from_str::<Value>(&response)?["archived_snapshots"]["closest"];
+    let json_value = serde_json::from_str::<Value>(&response)?;
+    let snapshot_info = &json_value["archived_snapshots"]["closest"];
+    
+    // Check if closest snapshot exists (not null)
+    if snapshot_info.is_null() {
+        return Err(ArchiveError::DeserializeError(
+            serde_json::from_str::<WaybackSnapshot>("{}").unwrap_err()
+        ));
+    }
 
     // Attempt to deserialize the snapshot information to a [`WaybackSnapshot`] struct.
     serde_json::from_value(snapshot_info.clone())

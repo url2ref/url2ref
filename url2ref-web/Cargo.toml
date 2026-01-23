@@ -14,7 +14,7 @@ description = "Web front end for the url2ref library"
 url2ref = { path = "../url2ref" }
 dotenv = "0.15.0"
 grass = "0.13.1"
-rocket = "0.5.0"
+rocket = { version = "0.5.0", features = ["json"] }
 rocket_dyn_templates = { version = "0.1.0", features = ["tera"] }
 tera = "1.19.1"
 thiserror = "1.0.50"
