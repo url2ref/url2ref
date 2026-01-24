@@ -12,7 +12,7 @@ body {
 }
 
 .main-search {
-    padding-top: 25vh;
+    padding-top: 5vh;
 }
 
 .logo {
@@ -100,4 +100,86 @@ body {
   animation: slide-ref 6s linear infinite;
   animation-timing-function: ease-in-out;
   transition: opacity 1s ease-in-out;
+}
+
+// Multi-source metadata table styles
+#metadata-table {
+  th, td {
+    vertical-align: middle;
+    font-size: 0.875rem;
+  }
+  
+  // Header row (Field, Open Graph, etc.)
+  thead th {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  th[scope="row"] {
+    font-weight: 600;
+    white-space: nowrap;
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .source-col {
+    text-align: center;
+  }
+  
+  // Center-align empty cells with em-dash
+  td.empty-cell {
+    text-align: center;
+  }
+  
+  // Section header rows
+  .section-header {
+    background-color: rgba(255, 255, 255, 0.05);
+    
+    th {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--bs-secondary);
+      padding: 0.5rem 0.75rem;
+      font-weight: 600;
+    }
+  }
+}
+
+.selectable-cell {
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+  padding: 0.5rem !important;
+  border: 2px solid transparent;
+  
+  &:hover {
+    background-color: rgba(13, 110, 253, 0.15) !important;
+  }
+  
+  &.selected {
+    background-color: rgba(13, 110, 253, 0.25) !important;
+    border-color: var(--bs-primary);
+    font-weight: 500;
+  }
+}
+
+@include color-mode(dark) {
+  .selectable-cell {
+    &:hover {
+      background-color: rgba(13, 110, 253, 0.2) !important;
+    }
+    
+    &.selected {
+      background-color: rgba(13, 110, 253, 0.35) !important;
+    }
+  }
+}
+
+// Collapse chevron rotation
+.collapse-icon {
+  transition: transform 0.2s ease-in-out;
+  display: inline-block;
+}
+
+a[aria-expanded="true"] .collapse-icon,
+[data-bs-toggle="collapse"][aria-expanded="true"] .collapse-icon {
+  transform: rotate(90deg);
 }

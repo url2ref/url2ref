@@ -4,14 +4,12 @@ use deepl_api::{DeepL, Error as DeepLError, TranslatableTextList};
 use std::result;
 
 use chrono::{NaiveDateTime, DateTime, Utc, ParseError};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::{EnumIter, EnumCount};
 use thiserror::Error;
 
 use crate::attribute::{Attribute, AttributeType, Date, Translation};
-
-use serde::Serialize;
 
 use crate::curl::CurlError;
 use crate::doi::DoiError;
@@ -74,15 +72,27 @@ pub enum MetadataType {
     Doi
 }
 
+/// Supported translation service providers.
+#[derive(Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TranslationProvider {
+    #[default]
+    DeepL,
+    Google,
+}
+
 /// User options for title translation.
 #[derive(Clone, Default)]
 pub struct TranslationOptions {
+    /// The translation service provider to use
+    pub provider: TranslationProvider,
     /// Contains an ISO 639 language code. If None, source language is guessed
     pub source: Option<String>,
     /// Contains an ISO 639 language code. If None, no translation.
     pub target: Option<String>,
-    /// DeepL API key
+    /// DeepL API key (required if provider is DeepL)
     pub deepl_key: Option<String>,
+    /// Google Cloud Translation API key (required if provider is Google)
+    pub google_key: Option<String>,
 }
 
 /// User options for fetching of archived URL and date.
@@ -227,6 +237,12 @@ pub fn from_file(html_path: &str, options: &GenerationOptions) -> GenerationResu
     create_reference(&parse_info, &options)
 }
 
+/// Creates a [`Reference`] from pre-fetched [`ParseInfo`].
+/// This is the public entry point for generating references from cached HTML.
+pub fn create_reference_from_parse_info(parse_info: &ParseInfo, options: &GenerationOptions) -> GenerationResult<Reference> {
+    create_reference(parse_info, options)
+}
+
 /// Create [`Reference`] by combining the extracted Open Graph and
 /// Schema.org metadata.
 fn create_reference(parse_info: &ParseInfo, options: &GenerationOptions) -> GenerationResult<Reference> {
@@ -285,21 +301,79 @@ fn translate_title(title: &Option<Attribute>, options: &TranslationOptions) -> G
 }
 
 /// Translates content according to the provided TranslationOptions.
+/// Dispatches to the appropriate translation provider based on options.
 fn translate<'a>(content: &'a str, options: &TranslationOptions) -> GenerationResult<String> {
+    let target_lang = options
+        .target
+        .clone()
+        .ok_or(ReferenceGenerationError::TranslationError)?;
+
+    match options.provider {
+        TranslationProvider::DeepL => translate_with_deepl(content, options, &target_lang),
+        TranslationProvider::Google => translate_with_google(content, options, &target_lang),
+    }
+}
+
+/// Translates content using the DeepL API.
+fn translate_with_deepl(content: &str, options: &TranslationOptions, target_lang: &str) -> GenerationResult<String> {
     let api_key = options.deepl_key.clone().ok_or(ReferenceGenerationError::TranslationError)?;
     let deepl = DeepL::new(api_key);
 
     let texts = TranslatableTextList {
         source_language: options.source.clone(),
-        target_language: options
-            .target
-            .clone()
-            .ok_or(ReferenceGenerationError::TranslationError)?,
+        target_language: target_lang.to_string(),
         texts: vec![content.to_string()],
     };
 
     let translated = deepl.translate(None, texts)?;
     Ok(translated[0].text.to_owned())
+}
+
+/// Response structure for Google Cloud Translation API v2.
+#[derive(Debug, Deserialize)]
+struct GoogleTranslateResponse {
+    data: GoogleTranslateData,
+}
+
+#[derive(Debug, Deserialize)]
+struct GoogleTranslateData {
+    translations: Vec<GoogleTranslation>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GoogleTranslation {
+    #[serde(rename = "translatedText")]
+    translated_text: String,
+}
+
+/// Translates content using the Google Cloud Translation API v2.
+fn translate_with_google(content: &str, options: &TranslationOptions, target_lang: &str) -> GenerationResult<String> {
+    let api_key = options.google_key.clone().ok_or(ReferenceGenerationError::TranslationError)?;
+    
+    // Build the API URL with query parameters
+    let encoded_text = urlencoding::encode(content);
+    let mut url = format!(
+        "https://translation.googleapis.com/language/translate/v2?key={}&q={}&target={}",
+        api_key, encoded_text, target_lang.to_lowercase()
+    );
+    
+    // Add source language if specified
+    if let Some(ref source_lang) = options.source {
+        url.push_str(&format!("&source={}", source_lang.to_lowercase()));
+    }
+
+    // Make the API request
+    let response_str = curl::get(&url, None, false)?;
+    
+    // Parse the JSON response
+    let response: GoogleTranslateResponse = serde_json::from_str(&response_str)
+        .map_err(|_| ReferenceGenerationError::TranslationError)?;
+    
+    // Extract the translated text
+    response.data.translations
+        .first()
+        .map(|t| t.translated_text.clone())
+        .ok_or(ReferenceGenerationError::TranslationError)
 }
 
 /// Struct denoting a snapshot returned by the Wayback Machine API.
@@ -360,16 +434,40 @@ fn save_to_wayback(url: &str) -> Result<WaybackSnapshot, ArchiveError> {
     // Use the Wayback Machine's Save Page Now endpoint
     let save_url = format!("https://web.archive.org/save/{}", url);
     
-    // Make a request to save the page
-    // The response will redirect to the archived page
-    let _response = curl::get(&save_url, None, true)?;
+    // Make a request to save the page - capture the redirect Location header
+    // The response will be a 302 redirect to the archived page
+    let location = curl::get_redirect_location(&save_url)?;
     
-    // After saving, fetch the latest snapshot which should be the one we just created
-    // Wait a moment for the archive to be indexed, then query for it
-    std::thread::sleep(std::time::Duration::from_secs(2));
-    
-    // Query for the newly created archive
-    call_wayback_api(url, &None)
+    // Parse the archive URL and timestamp from the Location header
+    // Format: https://web.archive.org/web/20260124121505/https://example.com/...
+    if let Some(timestamp) = parse_wayback_location(&location) {
+        Ok(WaybackSnapshot {
+            _status: "200".to_string(),
+            _available: true,
+            url: location,
+            timestamp,
+        })
+    } else {
+        // Fallback: query the API to get the snapshot info
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        call_wayback_api(url, &None)
+    }
+}
+
+/// Parse a Wayback Machine archive URL to extract the timestamp.
+/// Expected format: https://web.archive.org/web/TIMESTAMP/original_url
+fn parse_wayback_location(location: &str) -> Option<String> {
+    // Look for the pattern /web/TIMESTAMP/ where TIMESTAMP is 14 digits
+    let parts: Vec<&str> = location.split("/web/").collect();
+    if parts.len() >= 2 {
+        // Get the part after /web/ and extract the timestamp (first 14 chars or until /)
+        let after_web = parts[1];
+        let timestamp: String = after_web.chars().take_while(|c| c.is_ascii_digit()).collect();
+        if timestamp.len() == 14 {
+            return Some(timestamp);
+        }
+    }
+    None
 }
 
 /// Send a query for a URL to the Wayback Machine API and return the closest snapshot.

@@ -5,12 +5,13 @@ use std::env::VarError;
 
 use clap::{Parser, ValueEnum};
 
-use url2ref::generator::{TranslationOptions, ArchiveOptions};
+use url2ref::generator::{TranslationOptions, TranslationProvider, ArchiveOptions};
 use url2ref::generator::attribute_config::{AttributeConfig, AttributePriority};
 use url2ref::*;
 
 mod env_vars {
     pub const DEEPL_API_KEY: &str = "DEEPL_API_KEY";
+    pub const GOOGLE_TRANSLATE_API_KEY: &str = "GOOGLE_TRANSLATE_API_KEY";
 }
 
 /// Supported command-line arguments.
@@ -31,6 +32,10 @@ struct CommandLineArgs {
 
     #[clap(short, long, default_value=None)]
     target_lang: Option<String>,
+
+    /// Translation provider to use (deepl or google)
+    #[clap(long, value_enum, default_value_t=TranslationProviderArg::Deepl)]
+    translation_provider: TranslationProviderArg,
 
     #[clap(short, long, default_value_t=true)]
     include_archived: bool,
@@ -53,9 +58,21 @@ enum MetadataType {
     Schemaorg
 }
 
+/// Translation provider selection for CLI
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+enum TranslationProviderArg {
+    /// DeepL translation service
+    Deepl,
+    /// Google Cloud Translation API
+    Google,
+}
+
 fn load_deepl_key() -> Result<String, VarError> {
-    let deepl_key = env::var(env_vars::DEEPL_API_KEY)?;
-    Ok(deepl_key)
+    env::var(env_vars::DEEPL_API_KEY)
+}
+
+fn load_google_key() -> Result<String, VarError> {
+    env::var(env_vars::GOOGLE_TRANSLATE_API_KEY)
 }
 
 fn main() {
@@ -63,11 +80,19 @@ fn main() {
     let query = args.url;
 
     let deepl_key = load_deepl_key().ok();
+    let google_key = load_google_key().ok();
+
+    let provider = match args.translation_provider {
+        TranslationProviderArg::Deepl => TranslationProvider::DeepL,
+        TranslationProviderArg::Google => TranslationProvider::Google,
+    };
 
     let translation_options = TranslationOptions {
+        provider,
         source: args.source_lang,
         target: args.target_lang,
-        deepl_key: deepl_key
+        deepl_key,
+        google_key,
     };
 
     let attribute_config = if args.metadata_priority.is_some() {

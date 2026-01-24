@@ -20,7 +20,7 @@
   </head>
 
   <body class="d-flex flex-column h-100">
-    <header class="text-center mt-3">
+    <header class="text-center mt-1">
       <svg class="bi" width="20" height="20" type="button" fill="currentColor" id="bd-theme" alt="Toggle theme" aria-label="Toggle theme (dark)">
         <use xlink:href="/static/icons/circle-half.svg"/>
       </svg>

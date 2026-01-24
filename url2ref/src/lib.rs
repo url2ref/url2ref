@@ -22,11 +22,13 @@ mod html_meta;
 mod doi;
 mod curl;
 mod citation;
-mod parser;
+pub mod parser;
 mod reference;
 
 use generator::{attribute_config::{AttributeConfig, AttributeConfigBuilder}, TranslationOptions, ReferenceGenerationError, ArchiveOptions};
 pub use reference::*;
+pub use parser::{MultiSourceAttributeCollection, MultiSourceMetadata, ParseInfo};
+pub use generator::MetadataType;
 
 type Result<T> = result::Result<T, ReferenceGenerationError>;
 
@@ -69,4 +71,63 @@ pub fn generate(url: &str, options: &GenerationOptions) -> Result<Reference> {
 
 pub fn generate_from_file(path: &str, options: &GenerationOptions) -> Result<Reference> {
     generator::from_file(path, options)
+}
+
+/// Generate a reference from pre-fetched ParseInfo.
+/// This allows reusing cached HTML between multiple operations.
+/// 
+/// # Example
+/// ```ignore
+/// let parse_info = fetch_parse_info("https://example.com", None)?;
+/// let reference = generate_from_parse_info(&parse_info, &options)?;
+/// let multi_source = parse_all_metadata_from_parse_info(&parse_info);
+/// ```
+pub fn generate_from_parse_info(parse_info: &ParseInfo, options: &GenerationOptions) -> Result<Reference> {
+    generator::create_reference_from_parse_info(parse_info, options)
+}
+
+/// Fetch and parse HTML from a URL into a reusable ParseInfo struct.
+/// This performs the HTTP request once, and the result can be passed to:
+/// - `generate_from_parse_info()` for reference generation
+/// - `parse_all_metadata_from_parse_info()` for multi-source metadata
+/// 
+/// # Arguments
+/// * `url` - The URL to fetch
+/// * `options` - Optional generation options. If provided, only parsers specified
+///               in the attribute config will be initialized. If None, all parsers
+///               are initialized.
+pub fn fetch_parse_info<'a>(url: &'a str, options: Option<&GenerationOptions>) -> Result<ParseInfo<'a>> {
+    let parsers = options
+        .map(|o| o.attribute_config.parsers_used())
+        .unwrap_or_else(|| vec![
+            MetadataType::OpenGraph,
+            MetadataType::SchemaOrg,
+            MetadataType::HtmlMeta,
+            MetadataType::Doi,
+        ]);
+    ParseInfo::from_url(url, &parsers)
+}
+
+/// Parse metadata from all sources for a URL without generating a reference.
+/// Returns metadata from OpenGraph, Schema.org, HTML Meta, and DOI sources.
+/// 
+/// Note: This performs an HTTP request. If you also need to generate a reference,
+/// use `fetch_parse_info()` followed by `generate_from_parse_info()` and 
+/// `parse_all_metadata_from_parse_info()` to avoid duplicate requests.
+pub fn parse_all_metadata(url: &str) -> Result<MultiSourceAttributeCollection> {
+    let parsers = vec![
+        MetadataType::OpenGraph,
+        MetadataType::SchemaOrg,
+        MetadataType::HtmlMeta,
+        MetadataType::Doi,
+    ];
+    
+    let parse_info = ParseInfo::from_url(url, &parsers)?;
+    Ok(MultiSourceAttributeCollection::parse_all(&parse_info))
+}
+
+/// Parse multi-source metadata from pre-fetched ParseInfo.
+/// This allows reusing cached HTML between generate() and multi-source extraction.
+pub fn parse_all_metadata_from_parse_info(parse_info: &ParseInfo) -> MultiSourceAttributeCollection {
+    MultiSourceAttributeCollection::parse_all(parse_info)
 }

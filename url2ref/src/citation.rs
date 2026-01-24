@@ -27,15 +27,18 @@ impl WikiCitation {
             // Determine whether index should be inserted after author parameters;
             // this must be done when there are multiple authors.
             let i = count.map(|v| v.to_string()).unwrap_or_default();
-            // Trivial default case
-            let default = |a: &str| format!("|author{i}={}", a);
+            // Trivial default case - normalize whitespace
+            let default = |a: &str| {
+                let normalized: String = a.split_whitespace().collect::<Vec<&str>>().join(" ");
+                format!("|author{i}={}", normalized)
+            };
             match author {
                 Author::Person(str) => {
                     let parts: Vec<&str> = str.split_whitespace().collect();
                     match parts.as_slice() {
                         [first_names @ .., last_name] => {
                             let first_names = first_names.join(" ");
-                            format!("|last{i}={last_name} |first{i}={first_names}")
+                            format!("|last{i}={last_name}|first{i}={first_names}")
                         }
                         _ => default(str),
                     }
@@ -119,7 +122,11 @@ impl BibTeXCitation {
 
         // Creates a string representing an author in a style compatible with BibTeX markup
         fn stringify_author(author: &Author) -> String {
-            let default = |a: &str| format!("{{{}}}", a);
+            // Normalize whitespace and wrap in braces for organization/generic
+            let default = |a: &str| {
+                let normalized: String = a.split_whitespace().collect::<Vec<&str>>().join(" ");
+                format!("{{{}}}", normalized)
+            };
             match author {
                 Author::Person(str) => {
                     let parts: Vec<&str> = str.split_whitespace().collect();

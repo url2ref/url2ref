@@ -166,3 +166,73 @@ impl AttributeCollection {
         }
     }
 }
+
+/// Metadata parsed from all available sources for a single attribute type.
+/// Maps MetadataType to the parsed value (if available).
+#[derive(Clone, Debug)]
+pub struct MultiSourceMetadata {
+    pub values: HashMap<MetadataType, Attribute>,
+}
+
+impl MultiSourceMetadata {
+    pub fn new() -> Self {
+        Self {
+            values: HashMap::new(),
+        }
+    }
+
+    /// Get the value from a specific source
+    pub fn get(&self, source: &MetadataType) -> Option<&Attribute> {
+        self.values.get(source)
+    }
+}
+
+/// Collection of metadata from all sources for all attribute types.
+#[derive(Clone, Debug)]
+pub struct MultiSourceAttributeCollection {
+    pub attributes: HashMap<AttributeType, MultiSourceMetadata>,
+}
+
+impl MultiSourceAttributeCollection {
+    /// Parse all attributes from all metadata sources.
+    pub fn parse_all(parse_info: &ParseInfo) -> Self {
+        let mut collection = Self {
+            attributes: HashMap::new(),
+        };
+
+        let sources = [
+            MetadataType::OpenGraph,
+            MetadataType::SchemaOrg,
+            MetadataType::HtmlMeta,
+            MetadataType::Doi,
+        ];
+
+        for attr_type in AttributeType::iter() {
+            let mut multi_source = MultiSourceMetadata::new();
+            
+            for source in &sources {
+                let attribute = match source {
+                    MetadataType::OpenGraph => OpenGraph::parse_attribute(parse_info, attr_type),
+                    MetadataType::SchemaOrg => SchemaOrg::parse_attribute(parse_info, attr_type),
+                    MetadataType::HtmlMeta => HtmlMeta::parse_attribute(parse_info, attr_type),
+                    MetadataType::Doi => Doi::parse_attribute(parse_info, attr_type),
+                };
+                
+                if let Some(attr) = attribute {
+                    multi_source.values.insert(*source, attr);
+                }
+            }
+            
+            if !multi_source.values.is_empty() {
+                collection.attributes.insert(attr_type, multi_source);
+            }
+        }
+
+        collection
+    }
+
+    /// Get metadata for a specific attribute type
+    pub fn get(&self, attribute_type: AttributeType) -> Option<&MultiSourceMetadata> {
+        self.attributes.get(&attribute_type)
+    }
+}
