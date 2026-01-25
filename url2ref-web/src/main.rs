@@ -6,7 +6,6 @@ use rocket::response::Redirect;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::{self, catch, catchers, get, launch, post, routes, uri};
 use rocket_dyn_templates::Template;
-use std::collections::HashMap;
 use std::env;
 use tera::Context;
 use url2ref::attribute::AttributeType;
@@ -25,10 +24,6 @@ struct GenerateRequest {
     target_lang: Option<String>,
     /// Optional translation provider ("deepl" or "google")
     translation_provider: Option<String>,
-    /// Optional list of enabled metadata sources
-    metadata_sources: Option<Vec<String>>,
-    /// Optional field selections: maps field name to selected source
-    field_selections: Option<HashMap<String, String>>,
     /// Enable AI-based metadata extraction for missing fields
     ai_enabled: Option<bool>,
     /// AI provider ("openai" or "anthropic")
