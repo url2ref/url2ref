@@ -102,4 +102,9 @@ impl Reference {
     pub fn wiki(&self) -> String {
         self.build_citation(WikiCitation::new())
     }
+
+    /// Returns a citation in Harvard referencing style
+    pub fn harvard(&self) -> String {
+        self.build_citation(HarvardCitation::new())
+    }
 }

@@ -16,6 +16,7 @@ chrono = "0.4.31"
 curl = "0.4.44"
 deepl-api = "0.4.3"
 derive_builder = "0.20.0"
+htmlescape = "0.3"
 regex = "1.10.2"
 scraper = "0.18"
 serde = { version = "1.0.193", features = ["derive"] }

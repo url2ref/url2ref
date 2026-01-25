@@ -24,11 +24,13 @@ mod curl;
 mod citation;
 pub mod parser;
 mod reference;
+pub mod ai_extractor;
 
-use generator::{attribute_config::{AttributeConfig, AttributeConfigBuilder}, TranslationOptions, ReferenceGenerationError, ArchiveOptions};
+use generator::{attribute_config::{AttributeConfig, AttributeConfigBuilder}, TranslationOptions, ReferenceGenerationError, ArchiveOptions, AiExtractionOptions};
 pub use reference::*;
 pub use parser::{MultiSourceAttributeCollection, MultiSourceMetadata, ParseInfo};
 pub use generator::MetadataType;
+pub use generator::AiProvider;
 
 type Result<T> = result::Result<T, ReferenceGenerationError>;
 
@@ -39,6 +41,7 @@ pub struct GenerationOptions {
     pub attribute_config: AttributeConfig,
     pub translation_options: TranslationOptions,
     pub archive_options: ArchiveOptions,
+    pub ai_options: AiExtractionOptions,
 }
 impl Default for GenerationOptions {
     fn default() -> Self {
@@ -47,11 +50,13 @@ impl Default for GenerationOptions {
             .unwrap();
         let translation_options = TranslationOptions::default();
         let archive_options = ArchiveOptions::default();
+        let ai_options = AiExtractionOptions::default();
 
         Self {
             attribute_config,
             translation_options,
             archive_options,
+            ai_options,
         }
     }
 }
@@ -61,7 +66,13 @@ impl GenerationOptions {
             attribute_config,
             translation_options,
             archive_options,
+            ai_options: AiExtractionOptions::default(),
         }
+    }
+
+    pub fn with_ai(mut self, ai_options: AiExtractionOptions) -> Self {
+        self.ai_options = ai_options;
+        self
     }
 }
 

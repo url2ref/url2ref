@@ -1,6 +1,7 @@
 //! Generator responsible for producing a [`Reference`]
 
 use deepl_api::{DeepL, Error as DeepLError, TranslatableTextList};
+use htmlescape::decode_html;
 use std::result;
 
 use chrono::{NaiveDateTime, DateTime, Utc, ParseError};
@@ -10,6 +11,7 @@ use strum::{EnumIter, EnumCount};
 use thiserror::Error;
 
 use crate::attribute::{Attribute, AttributeType, Date, Translation};
+use crate::ai_extractor::{self, AiExtractionError};
 
 use crate::curl::CurlError;
 use crate::doi::DoiError;
@@ -47,6 +49,9 @@ pub enum ReferenceGenerationError {
 
     #[error("Retrieving DOI failed")]
     ArchiveError(#[from] ArchiveError),
+
+    #[error("AI extraction failed")]
+    AiExtractionError(#[from] AiExtractionError),
 }
 
 #[derive(Error, Debug)]
@@ -69,8 +74,12 @@ pub enum MetadataType {
     OpenGraph,
     SchemaOrg,
     HtmlMeta,
-    Doi
+    Doi,
+    Ai,
 }
+
+// Re-export AI types for convenience
+pub use crate::ai_extractor::{AiExtractionOptions, AiProvider};
 
 /// Supported translation service providers.
 #[derive(Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -249,18 +258,87 @@ fn create_reference(parse_info: &ParseInfo, options: &GenerationOptions) -> Gene
     // Build attribute collection based on configuration
     let attributes = AttributeCollection::initialize(&options.attribute_config, parse_info);
 
-    let title = attributes.get(AttributeType::Title).cloned();
-    let author = attributes.get(AttributeType::Author).cloned();
-    let date = attributes.get(AttributeType::Date).cloned();
-    let language = attributes.get(AttributeType::Locale).cloned();
-    let site = attributes.get(AttributeType::Site).cloned();
+    let mut title = attributes.get(AttributeType::Title).cloned();
+    let mut author = attributes.get(AttributeType::Author).cloned();
+    let mut date = attributes.get(AttributeType::Date).cloned();
+    let mut language = attributes.get(AttributeType::Language).cloned();
+    let mut site = attributes.get(AttributeType::Site).cloned();
     let url = attributes.get(AttributeType::Url).cloned()
         .or(parse_info.url.map(|x| Attribute::Url(x.to_string()))); // If no URL collected, attempt to use user-supplied URL
-    let publisher = attributes.get(AttributeType::Publisher).cloned();
+    let mut publisher = attributes.get(AttributeType::Publisher).cloned();
 
-    println!("[url2ref] create_reference: about to call translate_title");
+    println!("[url2ref] create_reference: collected attributes");
     println!("[url2ref]   title: {:?}", title);
+    println!("[url2ref]   author: {:?}", author);
+    println!("[url2ref]   date: {:?}", date);
+    println!("[url2ref]   site: {:?}", site);
+    println!("[url2ref]   publisher: {:?}", publisher);
+    println!("[url2ref]   language: {:?}", language);
     println!("[url2ref]   translation_options.target: {:?}", options.translation_options.target);
+
+    // AI fallback: if AI extraction is enabled and we have missing fields, try AI
+    if options.ai_options.enabled {
+        println!("[url2ref] AI extraction is enabled");
+        let missing_fields = title.is_none() || author.is_none() || date.is_none() 
+            || site.is_none() || publisher.is_none() || language.is_none();
+        
+        println!("[url2ref] Missing fields check: title={}, author={}, date={}, site={}, publisher={}, language={}",
+            title.is_none(), author.is_none(), date.is_none(), site.is_none(), publisher.is_none(), language.is_none());
+        
+        if missing_fields {
+            println!("[url2ref] AI extraction enabled, attempting to fill missing fields");
+            
+            if let Some(url_str) = parse_info.url {
+                match ai_extractor::extract_metadata(url_str, &parse_info.raw_html, &options.ai_options) {
+                    Ok(ai_metadata) => {
+                        println!("[url2ref] AI extraction succeeded:");
+                        println!("[url2ref]   AI title: {:?}", ai_metadata.title);
+                        println!("[url2ref]   AI authors: {:?}", ai_metadata.authors);
+                        println!("[url2ref]   AI date: {:?}", ai_metadata.date);
+                        println!("[url2ref]   AI site: {:?}", ai_metadata.site);
+                        println!("[url2ref]   AI publisher: {:?}", ai_metadata.publisher);
+                        println!("[url2ref]   AI language: {:?}", ai_metadata.language);
+                        
+                        // Only fill in missing fields from AI
+                        if title.is_none() {
+                            title = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Title);
+                            println!("[url2ref]   -> Filled title from AI: {:?}", title);
+                        }
+                        if author.is_none() {
+                            author = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Author);
+                            println!("[url2ref]   -> Filled author from AI: {:?}", author);
+                        }
+                        if date.is_none() {
+                            date = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Date);
+                            println!("[url2ref]   -> Filled date from AI: {:?}", date);
+                        }
+                        if site.is_none() {
+                            site = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Site);
+                            println!("[url2ref]   -> Filled site from AI: {:?}", site);
+                        }
+                        if publisher.is_none() {
+                            publisher = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Publisher);
+                            println!("[url2ref]   -> Filled publisher from AI: {:?}", publisher);
+                        }
+                        if language.is_none() {
+                            language = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Language);
+                            println!("[url2ref]   -> Filled language from AI: {:?}", language);
+                        }
+                    }
+                    Err(e) => {
+                        println!("[url2ref] AI extraction failed: {:?}", e);
+                        // Continue without AI data - this is a fallback, not critical
+                    }
+                }
+            } else {
+                println!("[url2ref] No URL available for AI extraction");
+            }
+        } else {
+            println!("[url2ref] No missing fields, skipping AI extraction");
+        }
+    } else {
+        println!("[url2ref] AI extraction is disabled");
+    }
 
     // Act according to translation options;
     // if translation fails, None will be the result.
@@ -361,7 +439,9 @@ fn translate_with_deepl(content: &str, options: &TranslationOptions, target_lang
     };
 
     let translated = deepl.translate(None, texts)?;
-    Ok(translated[0].text.to_owned())
+    let text = &translated[0].text;
+    // Decode any HTML entities that might be present
+    Ok(decode_html(text).unwrap_or_else(|_| text.to_owned()))
 }
 
 /// Response structure for Google Cloud Translation API v2.
@@ -437,8 +517,11 @@ fn translate_with_google(content: &str, options: &TranslationOptions, target_lan
     // Extract the translated text
     match response.data.translations.first() {
         Some(t) => {
-            println!("[url2ref]   Translation result: {}", t.translated_text);
-            Ok(t.translated_text.clone())
+            // Google Translate API returns HTML-encoded text, so we need to decode it
+            let decoded_text = decode_html(&t.translated_text)
+                .unwrap_or_else(|_| t.translated_text.clone());
+            println!("[url2ref]   Translation result: {}", decoded_text);
+            Ok(decoded_text)
         }
         None => {
             eprintln!("[url2ref]   ERROR: No translations in response");

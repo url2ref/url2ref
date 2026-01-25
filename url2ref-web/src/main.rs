@@ -10,7 +10,8 @@ use std::collections::HashMap;
 use std::env;
 use tera::Context;
 use url2ref::attribute::AttributeType;
-use url2ref::generator::{ArchiveOptions, MetadataType, TranslationOptions, TranslationProvider};
+use url2ref::generator::{ArchiveOptions, MetadataType, TranslationOptions, TranslationProvider, AiExtractionOptions, AiProvider};
+use url2ref::ai_extractor::{self, AiExtractedMetadata};
 use url2ref::{
     generate, generate_from_parse_info, fetch_parse_info, parse_all_metadata_from_parse_info,
     GenerationOptions, Reference
@@ -28,6 +29,14 @@ struct GenerateRequest {
     metadata_sources: Option<Vec<String>>,
     /// Optional field selections: maps field name to selected source
     field_selections: Option<HashMap<String, String>>,
+    /// Enable AI-based metadata extraction for missing fields
+    ai_enabled: Option<bool>,
+    /// AI provider ("openai" or "anthropic")
+    ai_provider: Option<String>,
+    /// AI API key (passed from client for security)
+    ai_api_key: Option<String>,
+    /// AI model to use
+    ai_model: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -44,6 +53,7 @@ struct FieldSources {
     schemaorg: Option<String>,
     htmlmeta: Option<String>,
     doi: Option<String>,
+    ai: Option<String>,
 }
 
 /// Multi-source metadata for all fields
@@ -94,6 +104,7 @@ struct GenerateResponse {
     success: bool,
     bibtex: Option<String>,
     wiki: Option<String>,
+    harvard: Option<String>,
     fields: Option<ReferenceFields>,
     /// Multi-source metadata for interactive selection
     multi_source: Option<MultiSourceFields>,
@@ -113,6 +124,7 @@ struct ArchiveResponse {
     /// Updated citations with archive info
     bibtex: Option<String>,
     wiki: Option<String>,
+    harvard: Option<String>,
     error: Option<String>,
 }
 
@@ -182,6 +194,7 @@ fn extract_multi_source_fields_from_parse_info(parse_info: &url2ref::ParseInfo) 
             schemaorg: None,
             htmlmeta: None,
             doi: None,
+            ai: None,
         };
         
         if let Some(attr) = metadata.get(&MetadataType::OpenGraph) {
@@ -199,7 +212,7 @@ fn extract_multi_source_fields_from_parse_info(parse_info: &url2ref::ParseInfo) 
         
         // Only return if at least one source has a value
         if sources.opengraph.is_some() || sources.schemaorg.is_some() 
-            || sources.htmlmeta.is_some() || sources.doi.is_some() {
+            || sources.htmlmeta.is_some() || sources.doi.is_some() || sources.ai.is_some() {
             Some(sources)
         } else {
             None
@@ -217,11 +230,43 @@ fn extract_multi_source_fields_from_parse_info(parse_info: &url2ref::ParseInfo) 
     }
 }
 
+/// Merge AI-extracted metadata into multi-source fields
+fn merge_ai_metadata(multi_source: &mut MultiSourceFields, ai_metadata: &AiExtractedMetadata) {
+    // Helper to get or create field sources
+    fn ensure_sources(sources: &mut Option<FieldSources>) -> &mut FieldSources {
+        if sources.is_none() {
+            *sources = Some(FieldSources::default());
+        }
+        sources.as_mut().unwrap()
+    }
+    
+    if let Some(ref title) = ai_metadata.title {
+        ensure_sources(&mut multi_source.title).ai = Some(title.clone());
+    }
+    if let Some(ref authors) = ai_metadata.authors {
+        if !authors.is_empty() {
+            ensure_sources(&mut multi_source.author).ai = Some(authors.join(", "));
+        }
+    }
+    if let Some(ref date) = ai_metadata.date {
+        ensure_sources(&mut multi_source.date).ai = Some(date.clone());
+    }
+    if let Some(ref site) = ai_metadata.site {
+        ensure_sources(&mut multi_source.site).ai = Some(site.clone());
+    }
+    if let Some(ref publisher) = ai_metadata.publisher {
+        ensure_sources(&mut multi_source.publisher).ai = Some(publisher.clone());
+    }
+    if let Some(ref language) = ai_metadata.language {
+        ensure_sources(&mut multi_source.language).ai = Some(language.clone());
+    }
+}
+
 /// Determine which source is selected by default for each field (priority order)
 fn get_default_selections(multi_source: &MultiSourceFields) -> FieldSelections {
     fn select_first_available(sources: &Option<FieldSources>) -> Option<String> {
         let sources = sources.as_ref()?;
-        // Priority: OpenGraph > Schema.org > HTML Meta > DOI
+        // Priority: OpenGraph > Schema.org > HTML Meta > DOI > AI (AI is fallback)
         // Note: Return values match JSON field names (no underscores)
         if sources.opengraph.is_some() {
             Some("opengraph".to_string())
@@ -231,6 +276,8 @@ fn get_default_selections(multi_source: &MultiSourceFields) -> FieldSelections {
             Some("htmlmeta".to_string())
         } else if sources.doi.is_some() {
             Some("doi".to_string())
+        } else if sources.ai.is_some() {
+            Some("ai".to_string())
         } else {
             None
         }
@@ -268,6 +315,27 @@ fn load_google_key() -> Option<String> {
     env::var("GOOGLE_TRANSLATE_API_KEY").ok()
 }
 
+/// Build AI extraction options from request
+fn build_ai_options(request: &GenerateRequest) -> AiExtractionOptions {
+    let enabled = request.ai_enabled.unwrap_or(false);
+    
+    if !enabled {
+        return AiExtractionOptions::default();
+    }
+    
+    let provider = match request.ai_provider.as_deref() {
+        Some("anthropic") => AiProvider::Anthropic,
+        _ => AiProvider::OpenAI,
+    };
+    
+    AiExtractionOptions {
+        enabled,
+        provider,
+        api_key: request.ai_api_key.clone(),
+        model: request.ai_model.clone(),
+    }
+}
+
 /// Generate reference - checks for existing archive but doesn't create new ones
 #[post("/api/generate", data = "<request>")]
 fn generate_reference(request: Json<GenerateRequest>) -> Json<GenerateResponse> {
@@ -278,8 +346,8 @@ fn generate_reference(request: Json<GenerateRequest>) -> Json<GenerateResponse> 
     };
 
     println!(
-        "[url2ref] Generate request: target_lang={:?}, provider={:?}",
-        request.target_lang, request.translation_provider
+        "[url2ref] Generate request: target_lang={:?}, provider={:?}, ai_enabled={:?}",
+        request.target_lang, request.translation_provider, request.ai_enabled
     );
 
     // Build translation options if target language is specified
@@ -302,6 +370,17 @@ fn generate_reference(request: Json<GenerateRequest>) -> Json<GenerateResponse> 
         google_key,
     };
 
+    // Build AI extraction options
+    let ai_options = build_ai_options(&request);
+    
+    println!(
+        "[url2ref] AI extraction: enabled={}, provider={:?}, model={:?}, key_len={}",
+        ai_options.enabled,
+        ai_options.provider,
+        ai_options.model,
+        ai_options.api_key.as_ref().map(|k| k.len()).unwrap_or(0)
+    );
+
     // Use archive options that only check for existing archives, don't create new ones
     let options = GenerationOptions {
         archive_options: ArchiveOptions {
@@ -309,6 +388,7 @@ fn generate_reference(request: Json<GenerateRequest>) -> Json<GenerateResponse> 
             perform_archival: false, // Don't wait for archive creation
         },
         translation_options,
+        ai_options,
         ..Default::default()
     };
     
@@ -320,6 +400,7 @@ fn generate_reference(request: Json<GenerateRequest>) -> Json<GenerateResponse> 
                 success: false,
                 bibtex: None,
                 wiki: None,
+                harvard: None,
                 fields: None,
                 multi_source: None,
                 selections: None,
@@ -339,13 +420,33 @@ fn generate_reference(request: Json<GenerateRequest>) -> Json<GenerateResponse> 
             };
             
             // Extract multi-source metadata from the cached ParseInfo (no additional HTTP request!)
-            let multi_source = Some(extract_multi_source_fields_from_parse_info(&parse_info));
+            let mut multi_source = extract_multi_source_fields_from_parse_info(&parse_info);
+            
+            // If AI extraction is enabled, also extract AI metadata and merge it
+            if options.ai_options.enabled {
+                match ai_extractor::extract_metadata(
+                    &request.url,
+                    &parse_info.raw_html,
+                    &options.ai_options
+                ) {
+                    Ok(ai_metadata) => {
+                        println!("[url2ref] Merging AI metadata into multi_source");
+                        merge_ai_metadata(&mut multi_source, &ai_metadata);
+                    }
+                    Err(e) => {
+                        println!("[url2ref] AI extraction for multi_source failed: {:?}", e);
+                    }
+                }
+            }
+            
+            let multi_source = Some(multi_source);
             let selections = multi_source.as_ref().map(get_default_selections);
             
             Json(GenerateResponse {
                 success: true,
                 bibtex: Some(reference.bibtex()),
                 wiki: Some(reference.wiki()),
+                harvard: Some(reference.harvard()),
                 fields: Some(fields),
                 multi_source,
                 selections,
@@ -358,6 +459,7 @@ fn generate_reference(request: Json<GenerateRequest>) -> Json<GenerateResponse> 
                 success: false,
                 bibtex: None,
                 wiki: None,
+                harvard: None,
                 fields: None,
                 multi_source: None,
                 selections: None,
@@ -391,6 +493,7 @@ fn create_archive(request: Json<ArchiveRequest>) -> Json<ArchiveResponse> {
                     archive_date: fields.archive_date,
                     bibtex: Some(reference.bibtex()),
                     wiki: Some(reference.wiki()),
+                    harvard: Some(reference.harvard()),
                     error: None,
                 })
             } else {
@@ -400,6 +503,7 @@ fn create_archive(request: Json<ArchiveRequest>) -> Json<ArchiveResponse> {
                     archive_date: None,
                     bibtex: Some(reference.bibtex()),
                     wiki: Some(reference.wiki()),
+                    harvard: Some(reference.harvard()),
                     error: Some("Failed to create archive".to_string()),
                 })
             }
@@ -411,6 +515,7 @@ fn create_archive(request: Json<ArchiveRequest>) -> Json<ArchiveResponse> {
                 archive_date: None,
                 bibtex: None,
                 wiki: None,
+                harvard: None,
                 error: Some(format!("{}", e)),
             })
         }

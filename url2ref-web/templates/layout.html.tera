@@ -59,5 +59,12 @@
 
   <script defer src="/static/js/bootstrap.min.js"></script>
   <script defer src="/static/popper/popper.min.js"></script>
-  <script defer src="/static/custom/custom.js"></script>
+  <!-- Modular JavaScript files -->
+  <script defer src="/static/custom/utilities.js"></script>
+  <script defer src="/static/custom/language.js"></script>
+  <script defer src="/static/custom/citation.js"></script>
+  <script defer src="/static/custom/archive.js"></script>
+  <script defer src="/static/custom/metadata.js"></script>
+  <script defer src="/static/custom/modal.js"></script>
+  <script defer src="/static/custom/main.js"></script>
 </html>

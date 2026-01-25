@@ -30,7 +30,7 @@ impl WikiCitation {
             // Trivial default case - normalize whitespace
             let default = |a: &str| {
                 let normalized: String = a.split_whitespace().collect::<Vec<&str>>().join(" ");
-                format!("|author{i}={}", normalized)
+                format!("| author{i} = {}", normalized)
             };
             match author {
                 Author::Person(str) => {
@@ -38,12 +38,23 @@ impl WikiCitation {
                     match parts.as_slice() {
                         [first_names @ .., last_name] => {
                             let first_names = first_names.join(" ");
-                            format!("|last{i}={last_name}|first{i}={first_names}")
+                            format!("| last{i} = {last_name}\n| first{i} = {first_names}")
                         }
                         _ => default(str),
                     }
                 },
-                Author::Organization(str) | Author::Generic(str) => default(str),
+                Author::Organization(str) => default(str),
+                Author::Generic(str) => {
+                    // Try to split generic author names into first/last like Person
+                    let parts: Vec<&str> = str.split_whitespace().collect();
+                    match parts.as_slice() {
+                        [first_names @ .., last_name] if !first_names.is_empty() => {
+                            let first_names = first_names.join(" ");
+                            format!("| last{i} = {last_name}\n| first{i} = {first_names}")
+                        }
+                        _ => default(str),
+                    }
+                },
             }
         }
 
@@ -87,7 +98,7 @@ impl CitationBuilder for WikiCitation {
     fn add(mut self,  attribute: &Attribute) -> Self {
         let result_option = match attribute {
             Attribute::Title(val) => Some(format!("| title = {}", val.to_string())),
-            Attribute::TranslatedTitle(trans) => Some(format!("| trans-title = {}\n| language = {}", trans.text, trans.language)),
+            Attribute::TranslatedTitle(trans) => Some(format!("| trans-title = {}", trans.text)),
             Attribute::Authors(vals) => Some(self.handle_authors(vals)),
             Attribute::Date(val) => Some(format!("| date = {}", self.handle_date(val))),
             Attribute::ArchiveDate(val) => Some(format!("| archive-date = {}", self.handle_date(val))),
@@ -138,7 +149,18 @@ impl BibTeXCitation {
                         _ => default(str),
                     }
                 },
-                Author::Organization(str) | Author::Generic(str) => default(str),
+                Author::Organization(str) => default(str),
+                Author::Generic(str) => {
+                    // Try to split generic author names into first/last like Person
+                    let parts: Vec<&str> = str.split_whitespace().collect();
+                    match parts.as_slice() {
+                        [first_names @ .., last_name] if !first_names.is_empty() => {
+                            let first_names = first_names.join(" ");
+                            format!("{last_name}, {first_names}")
+                        }
+                        _ => default(str),
+                    }
+                },
             }
         }
 
@@ -214,6 +236,172 @@ impl CitationBuilder for BibTeXCitation {
 
     fn build(self) -> String {
         format!("@misc{{ url2ref,\n{}}}", self.formatted_string)
+    }
+}
+
+/// Builds a citation using the Harvard referencing style.
+///
+/// Harvard style uses author-date format: Author (Year) 'Title', Site/Publisher. Available at: URL (Accessed: Date).
+pub struct HarvardCitation {
+    authors: Option<String>,
+    year: Option<String>,
+    title: Option<String>,
+    site: Option<String>,
+    publisher: Option<String>,
+    url: Option<String>,
+    access_date: Option<String>,
+}
+impl HarvardCitation {
+    fn format_authors(&self, authors: &[Author]) -> String {
+        // Harvard style: "LastName, F." for single author, "LastName, F. and LastName, F." for two,
+        // "LastName, F. et al." for three or more
+        fn format_single_author(author: &Author) -> String {
+            let get_initials = |first_names: &str| -> String {
+                first_names
+                    .split_whitespace()
+                    .map(|name| format!("{}.", name.chars().next().unwrap_or(' ')))
+                    .collect::<Vec<String>>()
+                    .join("")
+            };
+
+            match author {
+                Author::Person(str) | Author::Generic(str) => {
+                    let parts: Vec<&str> = str.split_whitespace().collect();
+                    match parts.as_slice() {
+                        [first_names @ .., last_name] if !first_names.is_empty() => {
+                            let initials = get_initials(&first_names.join(" "));
+                            format!("{}, {}", last_name, initials)
+                        }
+                        [single_name] => single_name.to_string(),
+                        _ => str.to_string(),
+                    }
+                }
+                Author::Organization(str) => str.to_string(),
+            }
+        }
+
+        match authors.len() {
+            0 => String::new(),
+            1 => format_single_author(&authors[0]),
+            2 => format!("{} and {}", 
+                format_single_author(&authors[0]), 
+                format_single_author(&authors[1])),
+            _ => format!("{} et al.", format_single_author(&authors[0])),
+        }
+    }
+
+    fn extract_year(&self, date: &Date) -> String {
+        match date {
+            Date::DateTime(dt) => dt.format("%Y").to_string(),
+            Date::YearMonthDay(nd) => nd.format("%Y").to_string(),
+            Date::YearMonth { year, .. } => year.to_string(),
+            Date::Year(year) => year.to_string(),
+        }
+    }
+
+    fn format_access_date(&self, date: &Date) -> String {
+        // Harvard style access date: "1 January 2024"
+        match date {
+            Date::DateTime(dt) => dt.format("%-d %B %Y").to_string(),
+            Date::YearMonthDay(nd) => nd.format("%-d %B %Y").to_string(),
+            Date::YearMonth { year, month } => format!("{} {}", month_name(*month), year),
+            Date::Year(year) => year.to_string(),
+        }
+    }
+}
+
+/// Convert month number to name
+fn month_name(month: i32) -> &'static str {
+    match month {
+        1 => "January",
+        2 => "February",
+        3 => "March",
+        4 => "April",
+        5 => "May",
+        6 => "June",
+        7 => "July",
+        8 => "August",
+        9 => "September",
+        10 => "October",
+        11 => "November",
+        12 => "December",
+        _ => "Unknown",
+    }
+}
+
+impl CitationBuilder for HarvardCitation {
+    fn new() -> Self {
+        Self {
+            authors: None,
+            year: None,
+            title: None,
+            site: None,
+            publisher: None,
+            url: None,
+            access_date: None,
+        }
+    }
+
+    fn try_add(self, attribute_option: &Option<Attribute>) -> Self {
+        match attribute_option {
+            Some(attribute) => self.add(attribute),
+            None => self,
+        }
+    }
+
+    fn add(mut self, attribute: &Attribute) -> Self {
+        match attribute {
+            Attribute::Title(val) => self.title = Some(val.to_string()),
+            Attribute::Authors(vals) => self.authors = Some(self.format_authors(vals)),
+            Attribute::Date(val) => self.year = Some(self.extract_year(val)),
+            Attribute::Site(val) => self.site = Some(val.to_string()),
+            Attribute::Publisher(val) => self.publisher = Some(val.to_string()),
+            Attribute::Url(val) => self.url = Some(val.to_string()),
+            Attribute::ArchiveDate(val) => self.access_date = Some(self.format_access_date(val)),
+            _ => {}
+        }
+        self
+    }
+
+    fn build(self) -> String {
+        // Harvard format: Author (Year) 'Title', Site/Publisher. Available at: URL (Accessed: Date).
+        let mut result = String::new();
+
+        // Author and year
+        match (&self.authors, &self.year) {
+            (Some(authors), Some(year)) => result.push_str(&format!("{} ({})", authors, year)),
+            (Some(authors), None) => result.push_str(&format!("{} (n.d.)", authors)),
+            (None, Some(year)) => result.push_str(&format!("({})", year)),
+            (None, None) => result.push_str("(n.d.)"),
+        }
+
+        // Title (in single quotes for web pages)
+        if let Some(title) = &self.title {
+            result.push_str(&format!(" '{}'", title));
+        }
+
+        // Site or Publisher
+        let source = self.site.as_ref().or(self.publisher.as_ref());
+        if let Some(src) = source {
+            result.push_str(&format!(", {}", src));
+        }
+
+        result.push('.');
+
+        // URL
+        if let Some(url) = &self.url {
+            result.push_str(&format!(" Available at: {}", url));
+        }
+
+        // Access date
+        if let Some(date) = &self.access_date {
+            result.push_str(&format!(" (Accessed: {}).", date));
+        } else if self.url.is_some() {
+            // Add a period after URL if no access date
+            // (period already added after source)
+        }
+
+        result
     }
 }
 

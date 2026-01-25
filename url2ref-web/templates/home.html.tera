@@ -27,7 +27,12 @@
           <i class="bi bi-gear me-1"></i>Generation Options <i class="bi bi-chevron-down"></i>
         </a>
       </div>
-      <!-- Generation Options (Collapsed by default) -->
+    </div>
+  </div>
+
+  <!-- Generation Options (Collapsed by default) - Full width to match other sections -->
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
       <div class="collapse mt-2" id="generation-options">
         <div class="card card-body bg-dark border-secondary">
           <!-- Metadata Sources -->
@@ -54,25 +59,12 @@
           </div>
           <hr class="border-secondary my-2">
           <!-- Translation Options -->
-          <div class="d-flex align-items-center justify-content-center gap-2 flex-nowrap">
-            <label for="target-lang" class="form-label mb-0 text-muted text-nowrap">
+          <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+            <label for="target-lang-input" class="form-label mb-0 text-muted text-nowrap">
               <i class="bi bi-translate me-1"></i>Translate title to:
             </label>
-            <select class="form-select form-select-sm" id="target-lang" style="width: auto;">
-              <option value="">No translation</option>
-              <option value="EN">English</option>
-              <option value="DE">German (Deutsch)</option>
-              <option value="FR">French (Français)</option>
-              <option value="ES">Spanish (Español)</option>
-              <option value="IT">Italian (Italiano)</option>
-              <option value="PT">Portuguese (Português)</option>
-              <option value="NL">Dutch (Nederlands)</option>
-              <option value="PL">Polish (Polski)</option>
-              <option value="RU">Russian (Русский)</option>
-              <option value="JA">Japanese (日本語)</option>
-              <option value="ZH">Chinese (中文)</option>
-              <option value="KO">Korean (한국어)</option>
-            </select>
+            <input type="text" class="form-control form-control-sm" id="target-lang-input" placeholder="e.g., EN, English, Deutsch" style="width: 180px;" list="language-suggestions" autocomplete="off">
+            <datalist id="language-suggestions"></datalist>
             <label for="translation-provider" class="form-label mb-0 text-muted text-nowrap">
               using:
             </label>
@@ -81,8 +73,21 @@
               <option value="deepl">DeepL</option>
             </select>
           </div>
-          <div class="form-text text-center mt-2">
-            <small class="text-muted">Translation requires DEEPL_API_KEY or GOOGLE_TRANSLATE_API_KEY environment variable</small>
+          <hr class="border-secondary my-2">
+          <!-- AI Extraction Options -->
+          <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+            <div class="form-check form-check-inline mb-0">
+              <input class="form-check-input" type="checkbox" id="ai-enabled">
+              <label class="form-check-label text-muted" for="ai-enabled">
+                <i class="bi bi-stars me-1"></i>AI extraction (fallback)
+              </label>
+            </div>
+            <select class="form-select form-select-sm" id="ai-provider" style="width: auto;" disabled>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+            </select>
+            <input type="password" class="form-control form-control-sm" id="ai-api-key" placeholder="API Key" style="width: 150px;" disabled>
+            <input type="text" class="form-control form-control-sm" id="ai-model" placeholder="Model (optional)" style="width: 140px;" disabled>
           </div>
         </div>
       </div>
@@ -113,6 +118,11 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" id="wiki-tab" data-bs-toggle="tab" data-bs-target="#wiki-panel" type="button" role="tab" aria-controls="wiki-panel" aria-selected="false">
                 Wiki
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="harvard-tab" data-bs-toggle="tab" data-bs-target="#harvard-panel" type="button" role="tab" aria-controls="harvard-panel" aria-selected="false">
+                Harvard
               </button>
             </li>
           </ul>
@@ -154,6 +164,14 @@
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="harvard-panel" role="tabpanel" aria-labelledby="harvard-tab">
+              <div class="position-relative">
+                <pre class="bg-black p-3 rounded mb-0"><code id="harvard-output" class="text-light"></code></pre>
+                <button class="btn btn-secondary btn-sm position-absolute top-0 end-0 m-2 copy-btn" data-target="harvard-output" data-bs-toggle="tooltip" title="Copy to clipboard">
+                  <i class="bi bi-clipboard"></i> Copy
+                </button>
               </div>
             </div>
           </div>

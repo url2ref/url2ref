@@ -104,7 +104,8 @@ fn parse(
             MetadataType::OpenGraph => OpenGraph::parse_attribute(parse_info, attribute_type),
             MetadataType::SchemaOrg => SchemaOrg::parse_attribute(parse_info, attribute_type),
             MetadataType::HtmlMeta => HtmlMeta::parse_attribute(parse_info, attribute_type),
-            MetadataType::Doi => Doi::parse_attribute(parse_info, attribute_type)
+            MetadataType::Doi => Doi::parse_attribute(parse_info, attribute_type),
+            MetadataType::Ai => None, // AI is handled separately as a fallback
         };
         if attribute.is_some() {
             return attribute;
@@ -205,6 +206,7 @@ impl MultiSourceAttributeCollection {
             MetadataType::SchemaOrg,
             MetadataType::HtmlMeta,
             MetadataType::Doi,
+            // Note: AI is not included here - it's used as a fallback, not a primary source
         ];
 
         for attr_type in AttributeType::iter() {
@@ -216,6 +218,7 @@ impl MultiSourceAttributeCollection {
                     MetadataType::SchemaOrg => SchemaOrg::parse_attribute(parse_info, attr_type),
                     MetadataType::HtmlMeta => HtmlMeta::parse_attribute(parse_info, attr_type),
                     MetadataType::Doi => Doi::parse_attribute(parse_info, attr_type),
+                    MetadataType::Ai => None, // AI is handled separately
                 };
                 
                 if let Some(attr) = attribute {

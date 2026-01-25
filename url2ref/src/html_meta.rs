@@ -136,6 +136,23 @@ impl HtmlMeta {
         
         None
     }
+    /// Try to find the language from the html lang attribute
+    fn try_find_html_lang(raw_html: &str) -> Option<String> {
+        let document = Html::parse_document(raw_html);
+        
+        // Try to get the lang attribute from the html element
+        let selector = Selector::parse("html").ok()?;
+        if let Some(element) = document.select(&selector).next() {
+            if let Some(lang) = element.value().attr("lang") {
+                let lang_trimmed = lang.trim();
+                if !lang_trimmed.is_empty() {
+                    return Some(lang_trimmed.to_string());
+                }
+            }
+        }
+        
+        None
+    }
 }
 
 fn attribute_type_to_attribute(
@@ -198,6 +215,18 @@ impl AttributeParser for HtmlMeta {
                 }
                 None
             }
+            AttributeType::Language => {
+                // First try meta tags
+                let external_keys = keys(attribute_type);
+                if let Some(value) = HtmlMeta::try_find_meta_content(raw_html, external_keys) {
+                    return attribute_type_to_attribute(attribute_type, value);
+                }
+                // Fallback to <html lang="..."> attribute
+                if let Some(lang) = HtmlMeta::try_find_html_lang(raw_html) {
+                    return Some(Attribute::Language(lang));
+                }
+                None
+            }
             _ => {
                 let external_keys = keys(attribute_type);
                 let attribute_value = HtmlMeta::try_find_meta_content(raw_html, external_keys)?;
@@ -208,3 +237,29 @@ impl AttributeParser for HtmlMeta {
 }
 
 use chrono::TimeZone;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_html_lang_attribute() {
+        let html = r#"<!DOCTYPE html><html lang="da-DK"><head></head><body></body></html>"#;
+        let lang = HtmlMeta::try_find_html_lang(html);
+        assert_eq!(lang, Some("da-DK".to_string()));
+    }
+
+    #[test]
+    fn test_html_lang_attribute_simple() {
+        let html = r#"<html lang="en"><head></head><body></body></html>"#;
+        let lang = HtmlMeta::try_find_html_lang(html);
+        assert_eq!(lang, Some("en".to_string()));
+    }
+
+    #[test]
+    fn test_html_lang_attribute_missing() {
+        let html = r#"<html><head></head><body></body></html>"#;
+        let lang = HtmlMeta::try_find_html_lang(html);
+        assert_eq!(lang, None);
+    }
+}

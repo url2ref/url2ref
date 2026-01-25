@@ -89,3 +89,38 @@ pub fn get_redirect_location(url: &str) -> Result<String> {
 
     location.ok_or(CurlError::NoRedirectLocation)
 }
+
+/// Make a POST request with JSON body and custom headers
+pub fn post_json(url: &str, body: &str, headers: &[(&str, &str)]) -> Result<String> {
+    let mut easy = Easy::new();
+    let mut buf = Vec::new();
+
+    // Set timeouts
+    easy.timeout(std::time::Duration::from_secs(60))?;
+    easy.connect_timeout(std::time::Duration::from_secs(10))?;
+
+    // Set up headers
+    let mut header_list = List::new();
+    header_list.append("Content-Type: application/json")?;
+    for (key, value) in headers {
+        header_list.append(&format!("{}: {}", key, value))?;
+    }
+    easy.http_headers(header_list)?;
+
+    // Set up POST
+    easy.post(true)?;
+    easy.post_fields_copy(body.as_bytes())?;
+    easy.url(url)?;
+
+    {
+        let mut transfer = easy.transfer();
+        transfer.write_function(|data| {
+            buf.extend_from_slice(data);
+            Ok(data.len())
+        })?;
+        transfer.perform()?;
+    }
+
+    let response_string = String::from_utf8(buf)?;
+    Ok(response_string)
+}
