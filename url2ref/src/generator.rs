@@ -258,6 +258,10 @@ fn create_reference(parse_info: &ParseInfo, options: &GenerationOptions) -> Gene
         .or(parse_info.url.map(|x| Attribute::Url(x.to_string()))); // If no URL collected, attempt to use user-supplied URL
     let publisher = attributes.get(AttributeType::Publisher).cloned();
 
+    println!("[url2ref] create_reference: about to call translate_title");
+    println!("[url2ref]   title: {:?}", title);
+    println!("[url2ref]   translation_options.target: {:?}", options.translation_options.target);
+
     // Act according to translation options;
     // if translation fails, None will be the result.
     let translated_title = translate_title(&title, &options.translation_options).ok();
@@ -284,18 +288,35 @@ fn create_reference(parse_info: &ParseInfo, options: &GenerationOptions) -> Gene
 /// Attempts to translate the provided [`Attribute::Title`].
 /// Returns Option<[`Attribute::TranslatedTitle`]> on if successful and None otherwise.
 fn translate_title(title: &Option<Attribute>, options: &TranslationOptions) -> GenerationResult<Attribute> {
+    println!("[url2ref] translate_title called");
+    println!("[url2ref]   title: {:?}", title);
+    println!("[url2ref]   options.target: {:?}", options.target);
+    println!("[url2ref]   options.provider: {:?}", options.provider);
+    println!("[url2ref]   options.deepl_key: {}", options.deepl_key.as_ref().map(|k| format!("SET ({} chars)", k.len())).unwrap_or("NOT SET".to_string()));
+    println!("[url2ref]   options.google_key: {}", options.google_key.as_ref().map(|k| format!("SET ({} chars)", k.len())).unwrap_or("NOT SET".to_string()));
+
     // If title parameter is actually an Attribute::Title,
     // proceed with translation. Otherwise, throw an error.
     if let Some(Attribute::Title(content)) = title {
-        let text = translate(content, &options)?;
-        let translation_attribute = Attribute::TranslatedTitle(Translation {
-            text,
-            // We can safely unwrap here as the call to translate()
-            // would've already failed if no target language was provided.
-            language: options.target.clone().unwrap(),
-        });
-        Ok(translation_attribute)
+        println!("[url2ref]   Proceeding with translation of: {}", content);
+        match translate(content, &options) {
+            Ok(text) => {
+                println!("[url2ref]   Translation successful: {}", text);
+                let translation_attribute = Attribute::TranslatedTitle(Translation {
+                    text,
+                    // We can safely unwrap here as the call to translate()
+                    // would've already failed if no target language was provided.
+                    language: options.target.clone().unwrap(),
+                });
+                Ok(translation_attribute)
+            }
+            Err(e) => {
+                eprintln!("[url2ref]   Translation FAILED: {:?}", e);
+                Err(e)
+            }
+        }
     } else {
+        eprintln!("[url2ref]   No title attribute to translate");
         Err(ReferenceGenerationError::TranslationError)
     }
 }
@@ -303,14 +324,28 @@ fn translate_title(title: &Option<Attribute>, options: &TranslationOptions) -> G
 /// Translates content according to the provided TranslationOptions.
 /// Dispatches to the appropriate translation provider based on options.
 fn translate<'a>(content: &'a str, options: &TranslationOptions) -> GenerationResult<String> {
-    let target_lang = options
-        .target
-        .clone()
-        .ok_or(ReferenceGenerationError::TranslationError)?;
+    println!("[url2ref] translate() called with provider: {:?}", options.provider);
+    
+    let target_lang = match options.target.clone() {
+        Some(lang) => {
+            println!("[url2ref]   target_lang: {}", lang);
+            lang
+        }
+        None => {
+            eprintln!("[url2ref]   ERROR: No target language specified!");
+            return Err(ReferenceGenerationError::TranslationError);
+        }
+    };
 
     match options.provider {
-        TranslationProvider::DeepL => translate_with_deepl(content, options, &target_lang),
-        TranslationProvider::Google => translate_with_google(content, options, &target_lang),
+        TranslationProvider::DeepL => {
+            println!("[url2ref]   Using DeepL provider");
+            translate_with_deepl(content, options, &target_lang)
+        }
+        TranslationProvider::Google => {
+            println!("[url2ref]   Using Google provider");
+            translate_with_google(content, options, &target_lang)
+        }
     }
 }
 
@@ -348,7 +383,18 @@ struct GoogleTranslation {
 
 /// Translates content using the Google Cloud Translation API v2.
 fn translate_with_google(content: &str, options: &TranslationOptions, target_lang: &str) -> GenerationResult<String> {
-    let api_key = options.google_key.clone().ok_or(ReferenceGenerationError::TranslationError)?;
+    println!("[url2ref] translate_with_google() called");
+    
+    let api_key = match options.google_key.clone() {
+        Some(key) => {
+            println!("[url2ref]   Google API key found ({} chars)", key.len());
+            key
+        }
+        None => {
+            eprintln!("[url2ref]   ERROR: Google API key is NOT SET!");
+            return Err(ReferenceGenerationError::TranslationError);
+        }
+    };
     
     // Build the API URL with query parameters
     let encoded_text = urlencoding::encode(content);
@@ -362,18 +408,43 @@ fn translate_with_google(content: &str, options: &TranslationOptions, target_lan
         url.push_str(&format!("&source={}", source_lang.to_lowercase()));
     }
 
+    println!("[url2ref]   Making request to Google Translate API (key redacted in URL)");
+    println!("[url2ref]   Target language: {}", target_lang);
+
     // Make the API request
-    let response_str = curl::get(&url, None, false)?;
+    let response_str = match curl::get(&url, None, false) {
+        Ok(resp) => {
+            println!("[url2ref]   API response received ({} bytes)", resp.len());
+            println!("[url2ref]   Response: {}", &resp[..resp.len().min(500)]);
+            resp
+        }
+        Err(e) => {
+            eprintln!("[url2ref]   ERROR: curl request failed: {:?}", e);
+            return Err(ReferenceGenerationError::CurlError(e));
+        }
+    };
     
     // Parse the JSON response
-    let response: GoogleTranslateResponse = serde_json::from_str(&response_str)
-        .map_err(|_| ReferenceGenerationError::TranslationError)?;
+    let response: GoogleTranslateResponse = match serde_json::from_str(&response_str) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("[url2ref]   ERROR: Failed to parse JSON response: {:?}", e);
+            eprintln!("[url2ref]   Raw response: {}", response_str);
+            return Err(ReferenceGenerationError::TranslationError);
+        }
+    };
     
     // Extract the translated text
-    response.data.translations
-        .first()
-        .map(|t| t.translated_text.clone())
-        .ok_or(ReferenceGenerationError::TranslationError)
+    match response.data.translations.first() {
+        Some(t) => {
+            println!("[url2ref]   Translation result: {}", t.translated_text);
+            Ok(t.translated_text.clone())
+        }
+        None => {
+            eprintln!("[url2ref]   ERROR: No translations in response");
+            Err(ReferenceGenerationError::TranslationError)
+        }
+    }
 }
 
 /// Struct denoting a snapshot returned by the Wayback Machine API.

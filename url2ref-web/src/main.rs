@@ -277,13 +277,29 @@ fn generate_reference(request: Json<GenerateRequest>) -> Json<GenerateResponse> 
         _ => TranslationProvider::DeepL,
     };
 
+    println!(
+        "[url2ref] Generate request: target_lang={:?}, provider={:?}",
+        request.target_lang, request.translation_provider
+    );
+
     // Build translation options if target language is specified
+    let deepl_key = load_deepl_key();
+    let google_key = load_google_key();
+    
+    println!(
+        "[url2ref] Translation config: provider={:?}, target={:?}, deepl_key={}, google_key={}",
+        provider,
+        request.target_lang,
+        deepl_key.as_ref().map(|k| format!("SET ({} chars)", k.len())).unwrap_or("NOT SET".to_string()),
+        google_key.as_ref().map(|k| format!("SET ({} chars)", k.len())).unwrap_or("NOT SET".to_string())
+    );
+
     let translation_options = TranslationOptions {
         provider,
         source: None, // Let the API auto-detect source language
         target: request.target_lang.clone(),
-        deepl_key: load_deepl_key(),
-        google_key: load_google_key(),
+        deepl_key,
+        google_key,
     };
 
     // Use archive options that only check for existing archives, don't create new ones
@@ -450,14 +466,46 @@ fn fetch_multi_source(request: Json<MultiSourceRequest>) -> Json<MultiSourceResp
     }
 }
 
+/// Log the status of translation API keys at startup
+fn log_api_key_status() {
+    println!("[url2ref] Checking translation API key configuration...");
+    
+    let deepl_set = env::var("DEEPL_API_KEY").is_ok();
+    let google_set = env::var("GOOGLE_TRANSLATE_API_KEY").is_ok();
+    
+    if deepl_set {
+        let key = env::var("DEEPL_API_KEY").unwrap();
+        println!("[url2ref] DEEPL_API_KEY: SET (length: {} chars)", key.len());
+    } else {
+        eprintln!("[url2ref] DEEPL_API_KEY: NOT SET");
+    }
+    
+    if google_set {
+        let key = env::var("GOOGLE_TRANSLATE_API_KEY").unwrap();
+        println!("[url2ref] GOOGLE_TRANSLATE_API_KEY: SET (length: {} chars)", key.len());
+    } else {
+        eprintln!("[url2ref] GOOGLE_TRANSLATE_API_KEY: NOT SET");
+    }
+    
+    if !deepl_set && !google_set {
+        eprintln!("[url2ref] WARNING: No translation API keys configured - title translation will be disabled");
+    }
+}
+
 #[launch]
 fn rocket() -> _ {
+    // Load .env file if present (for API keys, etc.)
+    dotenv::dotenv().ok();
+
     let _compile_result = {
         match compile() {
             Ok(()) => (),
             Err(error) => panic!("SCSS compilation failed: {}", error),
         }
     };
+
+    // Log API key status at startup
+    log_api_key_status();
 
     rocket::build()
         .mount("/", routes![home, generate_reference, create_archive, fetch_multi_source])

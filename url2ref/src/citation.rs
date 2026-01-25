@@ -86,28 +86,28 @@ impl CitationBuilder for WikiCitation {
 
     fn add(mut self,  attribute: &Attribute) -> Self {
         let result_option = match attribute {
-            Attribute::Title(val) => Some(format!("|title={}", val.to_string())),
-            Attribute::TranslatedTitle(trans) => Some(format!("|trans-title={} |language={}", trans.text, trans.language)),
+            Attribute::Title(val) => Some(format!("| title = {}", val.to_string())),
+            Attribute::TranslatedTitle(trans) => Some(format!("| trans-title = {}\n| language = {}", trans.text, trans.language)),
             Attribute::Authors(vals) => Some(self.handle_authors(vals)),
-            Attribute::Date(val) => Some(format!("|date={}", self.handle_date(val))),
-            Attribute::ArchiveDate(val) => Some(format!("|archive-date={}", self.handle_date(val))),
-            Attribute::Language(val) => Some(format!("|language={}", val.to_string())),
-            Attribute::Site(val) => Some(format!("|site={}", val.to_string())),
-            Attribute::Url(val) => Some(format!("|url={}", val.to_string())),
-            Attribute::ArchiveUrl(val) => Some(format!("|archive-url={}", val.to_string())),
-            Attribute::Journal(val) => Some(format!("|journal={}", val.to_string())),
-            Attribute::Publisher(val) => Some(format!("|publisher={}", val.to_string())),
+            Attribute::Date(val) => Some(format!("| date = {}", self.handle_date(val))),
+            Attribute::ArchiveDate(val) => Some(format!("| archive-date = {}", self.handle_date(val))),
+            Attribute::Language(val) => Some(format!("| language = {}", val.to_string())),
+            Attribute::Site(val) => Some(format!("| site = {}", val.to_string())),
+            Attribute::Url(val) => Some(format!("| url = {}", val.to_string())),
+            Attribute::ArchiveUrl(val) => Some(format!("| archive-url = {}", val.to_string())),
+            Attribute::Journal(val) => Some(format!("| journal = {}", val.to_string())),
+            Attribute::Publisher(val) => Some(format!("| publisher = {}", val.to_string())),
             _ => None
         };
 
         if let Some(parsed_value) = result_option {
-            self.formatted_string.push_str(&format!(" {}", parsed_value));
+            self.formatted_string.push_str(&format!("\n{}", parsed_value));
         }
         self
     }
 
     fn build(self) -> String {
-        format!("{{{{cite web{} }}}}", self.formatted_string)
+        format!("{{{{cite web{}\n}}}}", self.formatted_string)
     }
 }
 
@@ -193,6 +193,7 @@ impl CitationBuilder for BibTeXCitation {
     fn add(mut self,  attribute: &Attribute) -> Self {
         let result_option = match attribute {
             Attribute::Title(val)      => Some(format!("title = \"{}\"", val.to_string())),
+            Attribute::TranslatedTitle(trans) => Some(format!("note = \"Translated title: {}\"", trans.text)),
             Attribute::Authors(vals)   => Some(self.handle_authors(vals)),
             Attribute::Date(val)       => Some(self.handle_date(val)),
             Attribute::Url(val)        => Some(format!("url = \\url{{{}}}", val.to_string())),
@@ -228,7 +229,7 @@ mod tests {
         let wiki_citation = WikiCitation::new()
             .try_add(&Some(attribute))
             .build();
-        let expected_result = format!("{{{{cite web |title={title} }}}}");
+        let expected_result = format!("{{{{cite web\n| title = {title}\n}}}}");
 
         assert_eq!(wiki_citation, expected_result)
     }
