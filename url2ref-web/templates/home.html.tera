@@ -107,7 +107,7 @@
   <!-- Results Section -->
   <div class="row justify-content-center mt-3 d-none" id="results-section">
     <div class="col-md-10 col-lg-8">
-      <div class="card bg-dark border-secondary">
+      <div class="card bg-dark border-secondary results-card">
         <div class="card-header">
           <ul class="nav nav-tabs card-header-tabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -130,16 +130,36 @@
         <div class="card-body">
           <div class="tab-content">
             <div class="tab-pane fade show active" id="bibtex-panel" role="tabpanel" aria-labelledby="bibtex-tab">
-              <div class="position-relative">
-                <pre class="bg-black p-3 rounded mb-0"><code id="bibtex-output" class="text-light"></code></pre>
+              <div class="position-relative citation-container">
+                <pre class="bg-black p-3 rounded mb-0 citation-pre"><code id="bibtex-output" class="text-light"></code></pre>
+                <!-- Loading skeleton -->
+                <div class="citation-skeleton" id="bibtex-skeleton">
+                  <div class="skeleton-line skeleton-short"></div>
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line skeleton-medium"></div>
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line skeleton-short"></div>
+                  <div class="skeleton-line skeleton-medium"></div>
+                  <div class="skeleton-line skeleton-short"></div>
+                </div>
                 <button class="btn btn-secondary btn-sm position-absolute top-0 end-0 m-2 copy-btn" data-target="bibtex-output" data-bs-toggle="tooltip" title="Copy to clipboard">
                   <i class="bi bi-clipboard"></i> Copy
                 </button>
               </div>
             </div>
             <div class="tab-pane fade" id="wiki-panel" role="tabpanel" aria-labelledby="wiki-tab">
-              <div class="position-relative">
-                <pre class="bg-black p-3 rounded mb-0"><code id="wiki-output" class="text-light"></code></pre>
+              <div class="position-relative citation-container">
+                <pre class="bg-black p-3 rounded mb-0 citation-pre"><code id="wiki-output" class="text-light"></code></pre>
+                <!-- Loading skeleton -->
+                <div class="citation-skeleton" id="wiki-skeleton">
+                  <div class="skeleton-line skeleton-short"></div>
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line skeleton-medium"></div>
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line skeleton-short"></div>
+                  <div class="skeleton-line skeleton-medium"></div>
+                  <div class="skeleton-line skeleton-short"></div>
+                </div>
                 <button class="btn btn-secondary btn-sm position-absolute top-0 end-0 m-2 copy-btn" data-target="wiki-output" data-bs-toggle="tooltip" title="Copy to clipboard">
                   <i class="bi bi-clipboard"></i> Copy
                 </button>
@@ -167,8 +187,13 @@
               </div>
             </div>
             <div class="tab-pane fade" id="harvard-panel" role="tabpanel" aria-labelledby="harvard-tab">
-              <div class="position-relative">
-                <pre class="bg-black p-3 rounded mb-0"><code id="harvard-output" class="text-light"></code></pre>
+              <div class="position-relative citation-container">
+                <pre class="bg-black p-3 rounded mb-0 citation-pre"><code id="harvard-output" class="text-light"></code></pre>
+                <!-- Loading skeleton -->
+                <div class="citation-skeleton" id="harvard-skeleton">
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line skeleton-medium"></div>
+                </div>
                 <button class="btn btn-secondary btn-sm position-absolute top-0 end-0 m-2 copy-btn" data-target="harvard-output" data-bs-toggle="tooltip" title="Copy to clipboard">
                   <i class="bi bi-clipboard"></i> Copy
                 </button>
@@ -183,7 +208,7 @@
   <!-- Reference Details Section (Compact View) -->
   <div class="row justify-content-center mt-3 d-none" id="details-section">
     <div class="col-md-10 col-lg-8">
-      <div class="card bg-dark border-secondary mb-3">
+      <div class="card bg-dark border-secondary mb-3 details-card">
         <div class="card-header d-flex justify-content-between align-items-center">
           <a class="text-decoration-none text-reset d-flex align-items-center" data-bs-toggle="collapse" href="#details-collapse" role="button" aria-expanded="false" aria-controls="details-collapse">
             <i class="bi bi-chevron-right me-2 collapse-icon"></i>

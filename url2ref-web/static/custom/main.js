@@ -188,8 +188,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading state
         setLoading(true);
         hideError();
-        hideResults();
         hideDetails();
+        
+        // Show results section with loading skeleton
+        showResultsLoading();
 
         try {
             const requestBody = { url: url };
@@ -256,13 +258,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 harvardOutput.textContent = data.harvard;
                 
                 showDetails();
-                showResults();
+                showResultsLoaded();
             } else {
                 showError(data.error || 'Failed to generate reference');
+                hideResults();
             }
         } catch (error) {
             console.error('Error:', error);
             showError('Network error: ' + error.message);
+            hideResults();
         } finally {
             setLoading(false);
         }
@@ -577,5 +581,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function hideResults() {
         resultsSection.classList.add('d-none');
+        // Also reset loading states
+        const resultsCard = resultsSection.querySelector('.results-card');
+        if (resultsCard) {
+            resultsCard.classList.remove('loading', 'loaded');
+        }
+    }
+
+    /**
+     * Show results section with loading skeleton animation
+     */
+    function showResultsLoading() {
+        // Clear previous output
+        bibtexOutput.textContent = '';
+        wikiOutput.textContent = '';
+        harvardOutput.textContent = '';
+        
+        // Show the results section
+        resultsSection.classList.remove('d-none');
+        
+        // Add loading class to show skeleton
+        const resultsCard = resultsSection.querySelector('.results-card');
+        if (resultsCard) {
+            resultsCard.classList.remove('loaded');
+            resultsCard.classList.add('loading');
+        }
+    }
+
+    /**
+     * Transition results from loading to loaded state
+     */
+    function showResultsLoaded() {
+        const resultsCard = resultsSection.querySelector('.results-card');
+        if (resultsCard) {
+            resultsCard.classList.remove('loading');
+            resultsCard.classList.add('loaded');
+        }
     }
 });

@@ -56,6 +56,18 @@ body {
     }
 }
 
+// Fade in and slide up animation for elements
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @include color-mode(dark) {
   .logo-url, .logo-ref, .logo-box {
       fill: #fff;
@@ -120,6 +132,14 @@ body {
     align-items: stretch;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     transition: opacity 0.2s ease-in-out;
+    
+    // Staggered fade-in animation for field rows
+    animation: fadeSlideIn 0.4s ease-out backwards;
+    @for $i from 1 through 12 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * 0.05}s;
+      }
+    }
     
     &:last-child {
       border-bottom: none;
@@ -608,4 +628,200 @@ body {
 a[aria-expanded="true"] .collapse-icon,
 [data-bs-toggle="collapse"][aria-expanded="true"] .collapse-icon {
   transform: rotate(90deg);
+}
+
+// =====================================================
+// Results Card Loading Animation Styles
+// =====================================================
+
+// Results card loading state
+.results-card {
+  // Smooth appearance animation when results section becomes visible
+  animation: fadeSlideIn 0.4s ease-out;
+  
+  &.loading {
+    .citation-pre code {
+      opacity: 0;
+    }
+    
+    .citation-skeleton {
+      opacity: 1;
+      visibility: visible;
+    }
+    
+    .copy-btn {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    
+    // Tab navigation subtle disabled state during loading
+    .nav-tabs .nav-link {
+      opacity: 0.7;
+    }
+  }
+  
+  &.loaded {
+    .citation-pre code {
+      opacity: 1;
+      transition: opacity 0.4s ease-in-out;
+    }
+    
+    .citation-skeleton {
+      opacity: 0;
+      visibility: hidden;
+    }
+    
+    .copy-btn {
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity 0.3s ease-in-out;
+    }
+    
+    .nav-tabs .nav-link {
+      opacity: 1;
+      transition: opacity 0.3s ease-in-out;
+    }
+  }
+}
+
+// Citation container
+.citation-container {
+  position: relative;
+  
+  .citation-pre {
+    position: relative;
+    min-height: 140px;
+    
+    code {
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+  }
+}
+
+// Skeleton loading animation
+.citation-skeleton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 1rem;
+  background-color: #000;
+  border-radius: 0.375rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+// Skeleton shimmer animation
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+// Pulse animation for skeleton
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.skeleton-line {
+  height: 0.875rem;
+  border-radius: 0.25rem;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite, skeleton-pulse 2s ease-in-out infinite;
+  
+  // Varying line widths for realistic look
+  &:nth-child(1) { width: 45%; animation-delay: 0s; }
+  &:nth-child(2) { width: 85%; animation-delay: 0.1s; }
+  &:nth-child(3) { width: 65%; animation-delay: 0.2s; }
+  &:nth-child(4) { width: 75%; animation-delay: 0.3s; }
+  &:nth-child(5) { width: 40%; animation-delay: 0.4s; }
+  &:nth-child(6) { width: 60%; animation-delay: 0.5s; }
+  &:nth-child(7) { width: 35%; animation-delay: 0.6s; }
+  
+  &.skeleton-short {
+    width: 35% !important;
+  }
+  
+  &.skeleton-medium {
+    width: 60% !important;
+  }
+}
+
+// Details section loading state
+.details-card {
+  // Smooth appearance animation
+  animation: fadeSlideIn 0.5s ease-out 0.2s backwards;
+  
+  &.loading {
+    opacity: 0.6;
+    
+    .card-body {
+      position: relative;
+      min-height: 100px;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 2rem;
+        height: 2rem;
+        border: 2px solid rgba(13, 110, 253, 0.3);
+        border-top-color: var(--bs-primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+// Progress indicator for generation
+.generation-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  color: var(--bs-secondary);
+  font-size: 0.875rem;
+  
+  .progress-spinner {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(13, 110, 253, 0.2);
+    border-top-color: var(--bs-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  
+  .progress-text {
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+  }
 }
