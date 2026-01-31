@@ -15,6 +15,10 @@ env:
 jobs:
   preview:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      deployments: write
     environment:
       name: pr-${{ github.event.number }}
       url: ${{ steps.deploy.outputs.url }}
