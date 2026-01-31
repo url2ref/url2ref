@@ -1,0 +1,112 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  preview:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    environment:
+      name: pr-preview
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Create preview app
+        id: create
+        run: |
+          APP_NAME="url2ref-pr-${{ github.event.pull_request.number }}"
+          
+          # Check if app exists, create if not
+          if ! flyctl apps list | grep -q "$APP_NAME"; then
+            flyctl apps create "$APP_NAME" --org personal || true
+          fi
+          
+          echo "app_name=$APP_NAME" >> $GITHUB_OUTPUT
+
+      - name: Set preview secrets
+        run: |
+          flyctl secrets set \
+            GOOGLE_TRANSLATE_API_KEY=${{ secrets.GOOGLE_TRANSLATE_API_KEY }} \
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            --app ${{ steps.create.outputs.app_name }}
+
+      - name: Deploy preview
+        id: deploy
+        run: |
+          flyctl deploy --remote-only \
+            --app ${{ steps.create.outputs.app_name }} \
+            --region arn \
+            --vm-memory 512 \
+            --ha=false
+          
+          echo "url=https://${{ steps.create.outputs.app_name }}.fly.dev" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = '${{ steps.deploy.outputs.url }}';
+            const body = `🚀 **Preview deployed!**\n\n🔗 ${url}\n\nThis preview will be automatically destroyed when the PR is closed.`;
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(c => c.body.includes('Preview deployed!'));
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+  cleanup:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Fly.io CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Destroy preview app
+        run: |
+          APP_NAME="url2ref-pr-${{ github.event.pull_request.number }}"
+          flyctl apps destroy "$APP_NAME" --yes || true
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '🗑️ **Preview destroyed.** The temporary deployment has been cleaned up.'
+            });
