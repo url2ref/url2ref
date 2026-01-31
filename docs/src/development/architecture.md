@@ -1,253 +1,86 @@
 # Architecture
 
-Technical overview of url2ref's internal architecture.
-
-## System Overview
+## Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         User Interfaces                          │
-├────────────────────────────┬────────────────────────────────────┤
-│        url2ref-cli         │          url2ref-web               │
-│     (Command Line)         │        (Web Server)                │
-└────────────────────────────┴────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        url2ref (Core Library)                    │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │  Generator  │──│   Parser    │──│   Citation Formatters   │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-│         │               │                      │                 │
-│         ▼               ▼                      ▼                 │
-│  ┌─────────────────────────────────────────────────────────────┐│
-│  │                    Metadata Sources                          ││
-│  ├──────────┬──────────┬──────────┬──────────┬────────┬───────┤│
-│  │ OpenGraph│Schema.org│ HTML Meta│   DOI    │ Zotero │   AI  ││
-│  └──────────┴──────────┴──────────┴──────────┴────────┴───────┘│
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│              url2ref-cli / url2ref-web              │
+└─────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────┐
+│                 url2ref (Core Library)              │
+├─────────────────────────────────────────────────────┤
+│  Generator → Parser → Citation Formatters           │
+│       │         │                                   │
+│       ▼         ▼                                   │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ OpenGraph│Schema.org│HTML Meta│DOI│Zotero│AI│   │
+│  └─────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
 ```
 
-## Core Library (`url2ref`)
-
-### Module Responsibilities
-
-| Module | Purpose |
-|--------|---------|
-| `lib.rs` | Public API, re-exports |
-| `generator.rs` | Orchestrates reference generation |
-| `parser.rs` | Coordinates metadata extraction |
-| `attribute.rs` | Type definitions for metadata |
-| `reference.rs` | Reference enum and accessors |
-| `citation.rs` | Citation format builders |
-
-### Data Flow
+## Data Flow
 
 ```
 URL → HTTP Fetch → HTML Parse → Metadata Extract → Merge → Reference → Citation
 ```
 
-1. **HTTP Fetch** (`curl.rs`)
-   - Fetches HTML content from URL
-   - Handles redirects, encoding
+## Core Modules
 
-2. **HTML Parse** (`parser.rs`)
-   - Parses HTML into DOM
-   - Initializes source-specific parsers
+| Module | Purpose |
+|--------|---------|
+| `generator.rs` | Orchestrates generation |
+| `parser.rs` | Coordinates extraction |
+| `attribute.rs` | Metadata types |
+| `reference.rs` | Reference enum |
+| `citation.rs` | Format builders |
 
-3. **Metadata Extract** (various modules)
-   - Each parser extracts attributes
-   - Results collected into `AttributeCollection`
+## Parsers
 
-4. **Merge** (`generator.rs`)
-   - Applies priority configuration
-   - Selects best value for each field
-
-5. **Reference Creation** (`reference.rs`)
-   - Constructs appropriate `Reference` variant
-   - Applies post-processing (translation, archive)
-
-6. **Citation Formatting** (`citation.rs`)
-   - Formats `Reference` into output string
-   - Builder pattern for each format
-
-## Metadata Parsers
-
-### Parser Architecture
-
-Each metadata source has a dedicated parser:
-
-```rust
-// Simplified parser interface
-trait MetadataParser {
-    fn parse(&self, html: &Html) -> AttributeCollection;
-}
-```
-
-### Open Graph Parser (`opengraph.rs`)
-
-Extracts `<meta property="og:*">` tags:
-
-```rust
-// Key extractions
-og:title       → Title
-og:site_name   → Site
-article:author → Author
-article:published_time → Date
-```
-
-### Schema.org Parser (`schema_org.rs`)
-
-Parses JSON-LD and microdata:
-
-```rust
-// Supports multiple formats
-<script type="application/ld+json">  // JSON-LD
-<div itemscope itemtype="...">       // Microdata
-```
-
-Handles nested structures:
-- `Article`, `NewsArticle`, `ScholarlyArticle`
-- `Person`, `Organization`
-- `WebPage`, `WebSite`
-
-### HTML Meta Parser (`html_meta.rs`)
-
-Extracts standard HTML elements:
-
-```rust
-<title>           → Title
-<meta name="..."> → Various attributes
-```
-
-### DOI Parser (`doi.rs`)
-
-Resolves DOIs via CrossRef/DataCite:
-
-```rust
-// Flow
-URL → Extract DOI → Query API → Parse response
-```
-
-### Zotero/Citoid (`zotero.rs`)
-
-Uses Wikipedia's Citoid API:
-
-```rust
-// API call
-POST https://en.wikipedia.org/api/rest_v1/data/citation/mediawiki/{url}
-```
-
-### AI Extractor (`ai_extractor.rs`)
-
-Sends page content to LLM:
-
-```rust
-// Prompt structure
-System: "Extract citation metadata..."
-User: <page content>
-Response: JSON with fields
-```
+Each source has a dedicated parser:
+- `opengraph.rs` - `<meta property="og:*">`
+- `schema_org.rs` - JSON-LD and microdata
+- `html_meta.rs` - `<title>`, `<meta name="*">`
+- `doi.rs` - CrossRef/DataCite resolution
+- `zotero.rs` - Wikipedia Citoid API
+- `ai_extractor.rs` - LLM extraction
 
 ## Attribute System
 
-### Type Definitions
-
 ```rust
-// Attribute type identifiers
-pub enum AttributeType {
-    Title, Author, Date, Site, Url, Language, ...
-}
-
-// Attribute values
-pub enum Attribute {
-    Title(String),
-    Authors(Vec<Author>),
-    Date(Date),
-    ...
-}
-```
-
-### Priority System
-
-```rust
-pub struct AttributePriority {
-    pub priority: Vec<MetadataType>,
-}
-
-// Example: [SchemaOrg, OpenGraph, HtmlMeta]
-// SchemaOrg value used if available, else OpenGraph, else HtmlMeta
-```
-
-### Attribute Collection
-
-```rust
-// Map of attribute type → attribute value per source
+// Per-source collection
 type AttributeCollection = HashMap<AttributeType, Attribute>;
 
-// Multi-source: attribute type → (source → value)
+// Multi-source for comparison
 type MultiSourceAttributeCollection = 
     HashMap<AttributeType, HashMap<MetadataType, Attribute>>;
 ```
 
-## Citation Formatters
+Priority determines which source's value is used when merging.
 
-### Builder Pattern
+## Citation Builders
 
 ```rust
-pub trait CitationBuilder {
+trait CitationBuilder {
     fn try_add(self, attr: &Option<Attribute>) -> Self;
     fn build(self) -> String;
 }
-
-// Usage in Reference
-impl Reference {
-    pub fn wiki(&self) -> String {
-        self.build_citation(WikiCitation::new())
-    }
-}
 ```
 
-### Format Implementations
+Implementations: `WikiCitation`, `BibTeXCitation`, `HarvardCitation`
 
-| Format | Module | Builder |
-|--------|--------|---------|
-| MediaWiki | `citation.rs` | `WikiCitation` |
-| BibTeX | `citation.rs` | `BibTeXCitation` |
-| Harvard | `citation.rs` | `HarvardCitation` |
-
-## Web Interface Architecture
-
-### Stack
+## Web Interface
 
 ```
-Frontend                    Backend
-──────────────────────────────────────
-Bootstrap 5 (CSS)          Rocket (Rust)
-Vanilla JS                 Tera (Templates)
-                          url2ref (Library)
+Browser → Rocket Route → Handler → url2ref → JSON → Browser
 ```
 
-### Request Flow
-
-```
-Browser → Rocket Route → Handler → url2ref → Response → JSON → Browser
-```
-
-### API Endpoints
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/` | Home page |
-| POST | `/generate` | Generate citation |
-| POST | `/archive` | Create archive |
-
-### Response Format
-
-```rust
-struct GenerateResponse {
-    success: bool,
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /` | Home page |
+| `POST /generate` | Generate citation |
+| `POST /archive` | Create archive |
     bibtex: Option<String>,
     wiki: Option<String>,
     harvard: Option<String>,
