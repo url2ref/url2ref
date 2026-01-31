@@ -1,12 +1,14 @@
 mod scss;
 use scss::compile;
 
-use rocket::fs::FileServer;
+use rocket::fs::{FileServer, NamedFile};
 use rocket::response::Redirect;
 use rocket::serde::{json::Json, Deserialize, Serialize};
 use rocket::{self, catch, catchers, get, launch, post, routes, uri};
+use rocket::request::{FromRequest, Outcome, Request};
 use rocket_dyn_templates::Template;
 use std::env;
+use std::path::{Path, PathBuf};
 use tera::Context;
 use url2ref::attribute::AttributeType;
 use url2ref::generator::{ArchiveOptions, MetadataType, TranslationOptions, TranslationProvider, AiExtractionOptions, AiProvider};
@@ -619,6 +621,49 @@ fn log_api_key_status() {
     }
 }
 
+/// Guard that matches requests to docs.url2ref.com or docs.localhost
+struct DocsHost;
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for DocsHost {
+    type Error = ();
+
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
+        match request.host() {
+            Some(host) => {
+                let hostname = host.domain().as_str();
+                if hostname.starts_with("docs.") || hostname == "docs" {
+                    Outcome::Success(DocsHost)
+                } else {
+                    Outcome::Forward(rocket::http::Status::NotFound)
+                }
+            }
+            None => Outcome::Forward(rocket::http::Status::NotFound),
+        }
+    }
+}
+
+/// Serve docs index
+#[get("/", rank = 1)]
+async fn docs_index(_host: DocsHost) -> Option<NamedFile> {
+    NamedFile::open("../docs/book/index.html").await.ok()
+}
+
+/// Serve docs static files
+#[get("/<path..>", rank = 1)]
+async fn docs_files(_host: DocsHost, path: PathBuf) -> Option<NamedFile> {
+    let docs_path = Path::new("../docs/book").join(&path);
+    
+    // Try the exact path first
+    if let Ok(file) = NamedFile::open(&docs_path).await {
+        return Some(file);
+    }
+    
+    // If it's a directory, try index.html
+    let index_path = docs_path.join("index.html");
+    NamedFile::open(index_path).await.ok()
+}
+
 #[launch]
 fn rocket() -> _ {
     // Load .env file if present (for API keys, etc.)
@@ -635,7 +680,7 @@ fn rocket() -> _ {
     log_api_key_status();
 
     rocket::build()
-        .mount("/", routes![home, generate_reference, create_archive, fetch_multi_source])
+        .mount("/", routes![docs_index, docs_files, home, generate_reference, create_archive, fetch_multi_source])
         .mount("/static", FileServer::from("./static"))
         .attach(Template::fairing())
         .register("/", catchers![not_found])
