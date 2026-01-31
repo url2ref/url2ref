@@ -18,6 +18,7 @@ fn test_generation_options(priorities: AttributePriority) -> GenerationOptions {
             include_archived: false,
             perform_archival: false,
         },
+        ai_options: AiExtractionOptions::default(),
     }
 }
 
@@ -57,6 +58,14 @@ fn check(html_path: &str, expected_results_path: &str) {
             HtmlMeta => {
                 let priorities = AttributePriority { priority: vec!(HtmlMeta)};
                 test_generation_options(priorities)
+            },
+            Zotero => {
+                let priorities = AttributePriority { priority: vec!(Zotero)};
+                test_generation_options(priorities)
+            },
+            Ai => {
+                // AI tests are handled separately
+                continue;
             }
         };
 

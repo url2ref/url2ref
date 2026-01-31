@@ -204,6 +204,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 requestBody.translation_provider = translationProviderSelect ? translationProviderSelect.value : 'deepl';
             }
             
+            // Include Zotero option if enabled
+            const zoteroCheckbox = document.getElementById('meta-zotero');
+            if (zoteroCheckbox && zoteroCheckbox.checked) {
+                requestBody.zotero_enabled = true;
+            }
+            
             // Include AI options if enabled
             if (aiEnabledCheckbox && aiEnabledCheckbox.checked) {
                 requestBody.ai_enabled = true;

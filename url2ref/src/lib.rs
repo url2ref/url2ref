@@ -25,6 +25,7 @@ mod citation;
 pub mod parser;
 mod reference;
 pub mod ai_extractor;
+pub mod zotero;
 
 use generator::{attribute_config::{AttributeConfig, AttributeConfigBuilder}, TranslationOptions, ReferenceGenerationError, ArchiveOptions, AiExtractionOptions};
 pub use reference::*;

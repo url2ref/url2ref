@@ -26,3 +26,4 @@ strum = { version = "0.26", features = ["derive"] }
 thiserror = "1.0.50"
 urlencoding = "2.1"
 webpage = "2.0.0"
+log = "0.4"

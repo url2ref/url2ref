@@ -10,6 +10,7 @@ use std::env;
 use tera::Context;
 use url2ref::attribute::AttributeType;
 use url2ref::generator::{ArchiveOptions, MetadataType, TranslationOptions, TranslationProvider, AiExtractionOptions, AiProvider};
+use url2ref::generator::attribute_config::{AttributeConfig, AttributePriority};
 use url2ref::ai_extractor::{self, AiExtractedMetadata};
 use url2ref::{
     generate, generate_from_parse_info, fetch_parse_info, parse_all_metadata_from_parse_info,
@@ -23,8 +24,8 @@ struct GenerateRequest {
     /// Optional target language code (e.g., "EN", "DE", "FR") for title translation
     target_lang: Option<String>,
     /// Optional translation provider ("deepl" or "google")
-    translation_provider: Option<String>,
-    /// Enable AI-based metadata extraction for missing fields
+    translation_provider: Option<String>,    /// Enable Zotero/Citoid metadata extraction
+    zotero_enabled: Option<bool>,    /// Enable AI-based metadata extraction for missing fields
     ai_enabled: Option<bool>,
     /// AI provider ("openai" or "anthropic")
     ai_provider: Option<String>,
@@ -48,6 +49,7 @@ struct FieldSources {
     schemaorg: Option<String>,
     htmlmeta: Option<String>,
     doi: Option<String>,
+    zotero: Option<String>,
     ai: Option<String>,
 }
 
@@ -189,6 +191,7 @@ fn extract_multi_source_fields_from_parse_info(parse_info: &url2ref::ParseInfo) 
             schemaorg: None,
             htmlmeta: None,
             doi: None,
+            zotero: None,
             ai: None,
         };
         
@@ -204,10 +207,14 @@ fn extract_multi_source_fields_from_parse_info(parse_info: &url2ref::ParseInfo) 
         if let Some(attr) = metadata.get(&MetadataType::Doi) {
             sources.doi = Some(attr.to_string());
         }
+        if let Some(attr) = metadata.get(&MetadataType::Zotero) {
+            sources.zotero = Some(attr.to_string());
+        }
         
         // Only return if at least one source has a value
         if sources.opengraph.is_some() || sources.schemaorg.is_some() 
-            || sources.htmlmeta.is_some() || sources.doi.is_some() || sources.ai.is_some() {
+            || sources.htmlmeta.is_some() || sources.doi.is_some() 
+            || sources.zotero.is_some() || sources.ai.is_some() {
             Some(sources)
         } else {
             None
@@ -261,7 +268,7 @@ fn merge_ai_metadata(multi_source: &mut MultiSourceFields, ai_metadata: &AiExtra
 fn get_default_selections(multi_source: &MultiSourceFields) -> FieldSelections {
     fn select_first_available(sources: &Option<FieldSources>) -> Option<String> {
         let sources = sources.as_ref()?;
-        // Priority: OpenGraph > Schema.org > HTML Meta > DOI > AI (AI is fallback)
+        // Priority: OpenGraph > Schema.org > HTML Meta > DOI > Zotero > AI (AI is fallback)
         // Note: Return values match JSON field names (no underscores)
         if sources.opengraph.is_some() {
             Some("opengraph".to_string())
@@ -271,6 +278,8 @@ fn get_default_selections(multi_source: &MultiSourceFields) -> FieldSelections {
             Some("htmlmeta".to_string())
         } else if sources.doi.is_some() {
             Some("doi".to_string())
+        } else if sources.zotero.is_some() {
+            Some("zotero".to_string())
         } else if sources.ai.is_some() {
             Some("ai".to_string())
         } else {
@@ -376,15 +385,33 @@ fn generate_reference(request: Json<GenerateRequest>) -> Json<GenerateResponse> 
         ai_options.api_key.as_ref().map(|k| k.len()).unwrap_or(0)
     );
 
+    // Build attribute config with optional Zotero support
+    let zotero_enabled = request.zotero_enabled.unwrap_or(false);
+    println!("[url2ref] Zotero enabled: {}", zotero_enabled);
+    
+    let attribute_config = if zotero_enabled {
+        // Include Zotero in the priority chain
+        let priority = AttributePriority::new(&[
+            MetadataType::OpenGraph,
+            MetadataType::SchemaOrg,
+            MetadataType::HtmlMeta,
+            MetadataType::Doi,
+            MetadataType::Zotero,
+        ]);
+        AttributeConfig::new(priority)
+    } else {
+        AttributeConfig::default()
+    };
+
     // Use archive options that only check for existing archives, don't create new ones
     let options = GenerationOptions {
+        attribute_config,
         archive_options: ArchiveOptions {
             include_archived: true,
             perform_archival: false, // Don't wait for archive creation
         },
         translation_options,
         ai_options,
-        ..Default::default()
     };
     
     // Fetch HTML once and reuse for both reference generation and multi-source extraction

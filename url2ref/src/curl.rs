@@ -21,6 +21,11 @@ pub fn get_html(url: &str) -> Result<String> {
 }
 
 pub fn get(url: &str, header_opt: Option<&str>, follow_location: bool) -> Result<String> {
+    let headers: Vec<&str> = header_opt.map(|h| vec![h]).unwrap_or_default();
+    get_with_headers(url, &headers, follow_location)
+}
+
+pub fn get_with_headers(url: &str, headers: &[&str], follow_location: bool) -> Result<String> {
     let mut easy = Easy::new();
     let mut buf = Vec::new();
 
@@ -28,10 +33,12 @@ pub fn get(url: &str, header_opt: Option<&str>, follow_location: bool) -> Result
     easy.timeout(std::time::Duration::from_secs(30))?;
     easy.connect_timeout(std::time::Duration::from_secs(10))?;
 
-    // Header determines output format
-    if let Some(header) = header_opt {
+    // Add all headers
+    if !headers.is_empty() {
         let mut header_list = List::new();
-        header_list.append(header)?;
+        for header in headers {
+            header_list.append(header)?;
+        }
         easy.http_headers(header_list)?;
     }
 

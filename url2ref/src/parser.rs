@@ -11,6 +11,7 @@ use crate::generator::{MetadataType, ReferenceGenerationError};
 use crate::html_meta::HtmlMeta;
 use crate::opengraph::OpenGraph;
 use crate::schema_org::SchemaOrg;
+use crate::zotero::{self, Zotero, ZoteroResult};
 
 use biblatex::Bibliography;
 use chrono::{DateTime, TimeZone, Utc};
@@ -29,6 +30,7 @@ pub struct ParseInfo<'a> {
     pub raw_html: String,
     pub html: Option<HTML>,
     pub bibliography: Option<Bibliography>,
+    pub zotero_result: Option<ZoteroResult>,
 }
 
 impl ParseInfo<'_> {
@@ -38,11 +40,35 @@ impl ParseInfo<'_> {
 
         let schema_or_og = parsers.contains(&OpenGraph) || parsers.contains(&SchemaOrg);
         let doi = parsers.contains(&Doi);
+        let use_zotero = parsers.contains(&Zotero);
 
         let html = parse_html_from_string(raw_html.clone(), &schema_or_og);
         let bib = doi::try_doi_to_bib(url, raw_html.as_str(), &doi);
+        
+        // Fetch Zotero metadata if requested and URL isn't blacklisted
+        let zotero_result = if use_zotero && !zotero::should_skip_zotero(url) {
+            match zotero::fetch_zotero_metadata(url) {
+                Ok(result) => {
+                    if result.is_valid() {
+                        println!("[url2ref] Zotero returned valid result for {}: title={:?}", url, result.title);
+                        Some(result)
+                    } else {
+                        println!("[url2ref] Zotero result invalid for {}: title={:?}", url, result.title);
+                        None
+                    }
+                }
+                Err(e) => {
+                    println!("[url2ref] Zotero fetch failed for {}: {:?}", url, e);
+                    None
+                }
+            }
+        } else {
+            println!("[url2ref] Zotero skipped for {} (use_zotero={}, blacklisted={})", 
+                url, use_zotero, zotero::should_skip_zotero(url));
+            None
+        };
 
-        if (schema_or_og && html.is_err()) && (doi && bib.is_err()) {
+        if (schema_or_og && html.is_err()) && (doi && bib.is_err()) && zotero_result.is_none() {
             return Err(ReferenceGenerationError::ParseFailure);
         }
 
@@ -50,7 +76,8 @@ impl ParseInfo<'_> {
             url: Some(url),
             raw_html: raw_html,
             html: html.ok(),
-            bibliography: bib.ok()
+            bibliography: bib.ok(),
+            zotero_result,
         })
     }
 
@@ -64,7 +91,8 @@ impl ParseInfo<'_> {
             url: None,
             raw_html: raw_html,
             html: Some(html),
-            bibliography: None
+            bibliography: None,
+            zotero_result: None, // Can't fetch Zotero without a URL
         })
     }
 }
@@ -105,6 +133,10 @@ fn parse(
             MetadataType::SchemaOrg => SchemaOrg::parse_attribute(parse_info, attribute_type),
             MetadataType::HtmlMeta => HtmlMeta::parse_attribute(parse_info, attribute_type),
             MetadataType::Doi => Doi::parse_attribute(parse_info, attribute_type),
+            MetadataType::Zotero => {
+                parse_info.zotero_result.as_ref()
+                    .and_then(|r| Zotero::parse_from_result(r, attribute_type))
+            }
             MetadataType::Ai => None, // AI is handled separately as a fallback
         };
         if attribute.is_some() {
@@ -206,6 +238,7 @@ impl MultiSourceAttributeCollection {
             MetadataType::SchemaOrg,
             MetadataType::HtmlMeta,
             MetadataType::Doi,
+            MetadataType::Zotero,
             // Note: AI is not included here - it's used as a fallback, not a primary source
         ];
 
@@ -218,6 +251,10 @@ impl MultiSourceAttributeCollection {
                     MetadataType::SchemaOrg => SchemaOrg::parse_attribute(parse_info, attr_type),
                     MetadataType::HtmlMeta => HtmlMeta::parse_attribute(parse_info, attr_type),
                     MetadataType::Doi => Doi::parse_attribute(parse_info, attr_type),
+                    MetadataType::Zotero => {
+                        parse_info.zotero_result.as_ref()
+                            .and_then(|r| Zotero::parse_from_result(r, attr_type))
+                    }
                     MetadataType::Ai => None, // AI is handled separately
                 };
                 

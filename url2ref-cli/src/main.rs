@@ -71,7 +71,10 @@ enum CitationFormat {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 enum MetadataType {
     Opengraph,
-    Schemaorg
+    Schemaorg,
+    Htmlmeta,
+    Doi,
+    Zotero,
 }
 
 /// Translation provider selection for CLI
@@ -132,6 +135,9 @@ fn main() {
         let metadata_type = match args.metadata_priority.unwrap() {
             MetadataType::Opengraph => generator::MetadataType::OpenGraph,
             MetadataType::Schemaorg => generator::MetadataType::SchemaOrg,
+            MetadataType::Htmlmeta => generator::MetadataType::HtmlMeta,
+            MetadataType::Doi => generator::MetadataType::Doi,
+            MetadataType::Zotero => generator::MetadataType::Zotero,
         };
         let attribute_priorities = AttributePriority::new(&[metadata_type]);
         AttributeConfig::new(attribute_priorities)

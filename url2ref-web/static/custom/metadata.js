@@ -9,12 +9,13 @@ const SOURCE_LABELS = {
     'schemaorg': 'Schema.org',
     'htmlmeta': 'HTML Meta',
     'doi': 'DOI',
+    'zotero': 'Zotero',
     'ai': 'AI',
     'custom': 'Custom'
 };
 
 // Available source types
-const SOURCES = ['opengraph', 'schemaorg', 'htmlmeta', 'doi', 'ai'];
+const SOURCES = ['opengraph', 'schemaorg', 'htmlmeta', 'doi', 'zotero', 'ai'];
 
 // Field definitions for metadata section
 const METADATA_FIELD_DEFS = [
