@@ -1,0 +1,39 @@
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+concurrency:
+  group: pr-${{ github.event.number }}
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  FLY_REGION: arn
+  FLY_ORG: personal
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    environment:
+      name: pr-${{ github.event.number }}
+      url: ${{ steps.deploy.outputs.url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy PR Preview
+        id: deploy
+        uses: superfly/fly-pr-review-apps@1.5.0
+        with:
+          name: url2ref-pr-${{ github.event.number }}
+          secrets: GOOGLE_TRANSLATE_API_KEY=${{ secrets.GOOGLE_TRANSLATE_API_KEY }} OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          memory: 512
+          ha: false
+
+      - name: Clean up GitHub environment
+        uses: strumwolf/delete-deployment-environment@v3
+        if: ${{ github.event.action == 'closed' }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: pr-${{ github.event.number }}

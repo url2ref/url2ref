@@ -1,0 +1,119 @@
+/* Custom styles for url2ref documentation */
+
+:root {
+    --sidebar-width: 280px;
+}
+
+/* Improve table readability */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+}
+
+th, td {
+    padding: 0.5em 1em;
+    text-align: left;
+    border-bottom: 1px solid var(--table-border-color);
+}
+
+th {
+    background-color: var(--table-header-bg);
+    font-weight: 600;
+}
+
+/* Code block improvements */
+pre {
+    border-radius: 6px;
+    padding: 1em;
+}
+
+code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Source Code Pro', monospace;
+}
+
+/* Inline code styling */
+:not(pre) > code {
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    background-color: var(--inline-code-color);
+}
+
+/* Admonition-style callouts */
+blockquote {
+    border-left: 4px solid var(--quote-border);
+    padding-left: 1em;
+    margin-left: 0;
+    color: var(--fg);
+    background-color: var(--quote-bg);
+    padding: 0.5em 1em;
+    border-radius: 0 4px 4px 0;
+}
+
+/* ASCII diagrams */
+pre.language-text,
+pre.language-plaintext {
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+
+/* Better heading anchors */
+h1, h2, h3, h4 {
+    position: relative;
+}
+
+h2 {
+    border-bottom: 1px solid var(--table-border-color);
+    padding-bottom: 0.3em;
+    margin-top: 1.5em;
+}
+
+h3 {
+    margin-top: 1.2em;
+}
+
+/* Horizontal rules */
+hr {
+    border: none;
+    border-top: 1px solid var(--table-border-color);
+    margin: 2em 0;
+}
+
+/* Improve list spacing */
+ul, ol {
+    padding-left: 1.5em;
+}
+
+li {
+    margin: 0.3em 0;
+}
+
+/* Keyboard shortcuts */
+kbd {
+    background-color: var(--table-header-bg);
+    border: 1px solid var(--table-border-color);
+    border-radius: 3px;
+    padding: 0.1em 0.4em;
+    font-size: 0.9em;
+}
+
+/* Table of contents improvements */
+.toc {
+    background-color: var(--quote-bg);
+    padding: 1em;
+    border-radius: 6px;
+    margin-bottom: 1.5em;
+}
+
+/* Print styles */
+@media print {
+    .sidebar,
+    .menu-bar,
+    .nav-chapters {
+        display: none;
+    }
+    
+    .content {
+        max-width: 100%;
+    }
+}
