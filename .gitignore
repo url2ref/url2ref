@@ -21,3 +21,9 @@ Cargo.lock
 
 # macOS filesystem meta-files
 .DS_Store
+
+# Environment variables file
+.env
+
+# mdBook generated output
+docs/book/

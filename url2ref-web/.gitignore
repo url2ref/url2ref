@@ -1,3 +1,6 @@
+# Environment variables (secrets)
+.env
+
 # Static, NPM assets
 static/*
 npm/node_modules

@@ -1,17 +1,17 @@
 //! Generator responsible for producing a [`Reference`]
 
 use deepl_api::{DeepL, Error as DeepLError, TranslatableTextList};
+use htmlescape::decode_html;
 use std::result;
 
 use chrono::{NaiveDateTime, DateTime, Utc, ParseError};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::{EnumIter, EnumCount};
 use thiserror::Error;
 
 use crate::attribute::{Attribute, AttributeType, Date, Translation};
-
-use serde::Serialize;
+use crate::ai_extractor::{self, AiExtractionError};
 
 use crate::curl::CurlError;
 use crate::doi::DoiError;
@@ -49,6 +49,9 @@ pub enum ReferenceGenerationError {
 
     #[error("Retrieving DOI failed")]
     ArchiveError(#[from] ArchiveError),
+
+    #[error("AI extraction failed")]
+    AiExtractionError(#[from] AiExtractionError),
 }
 
 #[derive(Error, Debug)]
@@ -70,18 +73,36 @@ pub enum MetadataType {
     #[default]
     OpenGraph,
     SchemaOrg,
-    Doi
+    HtmlMeta,
+    Doi,
+    Zotero,
+    Ai,
+}
+
+// Re-export AI types for convenience
+pub use crate::ai_extractor::{AiExtractionOptions, AiProvider};
+
+/// Supported translation service providers.
+#[derive(Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TranslationProvider {
+    #[default]
+    DeepL,
+    Google,
 }
 
 /// User options for title translation.
 #[derive(Clone, Default)]
 pub struct TranslationOptions {
+    /// The translation service provider to use
+    pub provider: TranslationProvider,
     /// Contains an ISO 639 language code. If None, source language is guessed
     pub source: Option<String>,
     /// Contains an ISO 639 language code. If None, no translation.
     pub target: Option<String>,
-    /// DeepL API key
+    /// DeepL API key (required if provider is DeepL)
     pub deepl_key: Option<String>,
+    /// Google Cloud Translation API key (required if provider is Google)
+    pub google_key: Option<String>,
 }
 
 /// User options for fetching of archived URL and date.
@@ -91,14 +112,13 @@ pub struct ArchiveOptions {
     pub include_archived: bool,
     /// Whether to attempt perform the archive operation if the site
     /// hasn't been archived yet.
-    /// TODO: implement this
     pub perform_archival: bool,
 }
 impl Default for ArchiveOptions {
     fn default() -> Self {
         Self {
             include_archived: true,
-            perform_archival: false,
+            perform_archival: true,
         }
     }
 }
@@ -120,7 +140,7 @@ pub mod attribute_config {
     impl Default for AttributePriority {
         fn default() -> Self {
             Self {
-                priority: vec![MetadataType::OpenGraph, MetadataType::SchemaOrg],
+                priority: vec![MetadataType::OpenGraph, MetadataType::SchemaOrg, MetadataType::HtmlMeta],
             }
         }
     }
@@ -206,8 +226,6 @@ pub mod attribute_config {
                 .collect::<Vec<Vec<MetadataType>>>()
                 .concat();
 
-            println!("{:?}", flattened_map);
-
             flattened_map
                 .into_iter()
                 .collect::<HashSet<_>>()
@@ -229,20 +247,99 @@ pub fn from_file(html_path: &str, options: &GenerationOptions) -> GenerationResu
     create_reference(&parse_info, &options)
 }
 
+/// Creates a [`Reference`] from pre-fetched [`ParseInfo`].
+/// This is the public entry point for generating references from cached HTML.
+pub fn create_reference_from_parse_info(parse_info: &ParseInfo, options: &GenerationOptions) -> GenerationResult<Reference> {
+    create_reference(parse_info, options)
+}
+
 /// Create [`Reference`] by combining the extracted Open Graph and
 /// Schema.org metadata.
 fn create_reference(parse_info: &ParseInfo, options: &GenerationOptions) -> GenerationResult<Reference> {
     // Build attribute collection based on configuration
     let attributes = AttributeCollection::initialize(&options.attribute_config, parse_info);
 
-    let title = attributes.get(AttributeType::Title).cloned();
-    let author = attributes.get(AttributeType::Author).cloned();
-    let date = attributes.get(AttributeType::Date).cloned();
-    let language = attributes.get(AttributeType::Locale).cloned();
-    let site = attributes.get(AttributeType::Site).cloned();
+    let mut title = attributes.get(AttributeType::Title).cloned();
+    let mut author = attributes.get(AttributeType::Author).cloned();
+    let mut date = attributes.get(AttributeType::Date).cloned();
+    let mut language = attributes.get(AttributeType::Language).cloned();
+    let mut site = attributes.get(AttributeType::Site).cloned();
     let url = attributes.get(AttributeType::Url).cloned()
         .or(parse_info.url.map(|x| Attribute::Url(x.to_string()))); // If no URL collected, attempt to use user-supplied URL
-    let publisher = attributes.get(AttributeType::Publisher).cloned();
+    let mut publisher = attributes.get(AttributeType::Publisher).cloned();
+
+    println!("[url2ref] create_reference: collected attributes");
+    println!("[url2ref]   title: {:?}", title);
+    println!("[url2ref]   author: {:?}", author);
+    println!("[url2ref]   date: {:?}", date);
+    println!("[url2ref]   site: {:?}", site);
+    println!("[url2ref]   publisher: {:?}", publisher);
+    println!("[url2ref]   language: {:?}", language);
+    println!("[url2ref]   translation_options.target: {:?}", options.translation_options.target);
+
+    // AI fallback: if AI extraction is enabled and we have missing fields, try AI
+    if options.ai_options.enabled {
+        println!("[url2ref] AI extraction is enabled");
+        let missing_fields = title.is_none() || author.is_none() || date.is_none() 
+            || site.is_none() || publisher.is_none() || language.is_none();
+        
+        println!("[url2ref] Missing fields check: title={}, author={}, date={}, site={}, publisher={}, language={}",
+            title.is_none(), author.is_none(), date.is_none(), site.is_none(), publisher.is_none(), language.is_none());
+        
+        if missing_fields {
+            println!("[url2ref] AI extraction enabled, attempting to fill missing fields");
+            
+            if let Some(url_str) = parse_info.url {
+                match ai_extractor::extract_metadata(url_str, &parse_info.raw_html, &options.ai_options) {
+                    Ok(ai_metadata) => {
+                        println!("[url2ref] AI extraction succeeded:");
+                        println!("[url2ref]   AI title: {:?}", ai_metadata.title);
+                        println!("[url2ref]   AI authors: {:?}", ai_metadata.authors);
+                        println!("[url2ref]   AI date: {:?}", ai_metadata.date);
+                        println!("[url2ref]   AI site: {:?}", ai_metadata.site);
+                        println!("[url2ref]   AI publisher: {:?}", ai_metadata.publisher);
+                        println!("[url2ref]   AI language: {:?}", ai_metadata.language);
+                        
+                        // Only fill in missing fields from AI
+                        if title.is_none() {
+                            title = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Title);
+                            println!("[url2ref]   -> Filled title from AI: {:?}", title);
+                        }
+                        if author.is_none() {
+                            author = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Author);
+                            println!("[url2ref]   -> Filled author from AI: {:?}", author);
+                        }
+                        if date.is_none() {
+                            date = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Date);
+                            println!("[url2ref]   -> Filled date from AI: {:?}", date);
+                        }
+                        if site.is_none() {
+                            site = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Site);
+                            println!("[url2ref]   -> Filled site from AI: {:?}", site);
+                        }
+                        if publisher.is_none() {
+                            publisher = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Publisher);
+                            println!("[url2ref]   -> Filled publisher from AI: {:?}", publisher);
+                        }
+                        if language.is_none() {
+                            language = ai_extractor::get_attribute_from_ai(&ai_metadata, AttributeType::Language);
+                            println!("[url2ref]   -> Filled language from AI: {:?}", language);
+                        }
+                    }
+                    Err(e) => {
+                        println!("[url2ref] AI extraction failed: {:?}", e);
+                        // Continue without AI data - this is a fallback, not critical
+                    }
+                }
+            } else {
+                println!("[url2ref] No URL available for AI extraction");
+            }
+        } else {
+            println!("[url2ref] No missing fields, skipping AI extraction");
+        }
+    } else {
+        println!("[url2ref] AI extraction is disabled");
+    }
 
     // Act according to translation options;
     // if translation fails, None will be the result.
@@ -270,38 +367,168 @@ fn create_reference(parse_info: &ParseInfo, options: &GenerationOptions) -> Gene
 /// Attempts to translate the provided [`Attribute::Title`].
 /// Returns Option<[`Attribute::TranslatedTitle`]> on if successful and None otherwise.
 fn translate_title(title: &Option<Attribute>, options: &TranslationOptions) -> GenerationResult<Attribute> {
+    println!("[url2ref] translate_title called");
+    println!("[url2ref]   title: {:?}", title);
+    println!("[url2ref]   options.target: {:?}", options.target);
+    println!("[url2ref]   options.provider: {:?}", options.provider);
+    println!("[url2ref]   options.deepl_key: {}", options.deepl_key.as_ref().map(|k| format!("SET ({} chars)", k.len())).unwrap_or("NOT SET".to_string()));
+    println!("[url2ref]   options.google_key: {}", options.google_key.as_ref().map(|k| format!("SET ({} chars)", k.len())).unwrap_or("NOT SET".to_string()));
+
     // If title parameter is actually an Attribute::Title,
     // proceed with translation. Otherwise, throw an error.
     if let Some(Attribute::Title(content)) = title {
-        let text = translate(content, &options)?;
-        let translation_attribute = Attribute::TranslatedTitle(Translation {
-            text,
-            // We can safely unwrap here as the call to translate()
-            // would've already failed if no target language was provided.
-            language: options.target.clone().unwrap(),
-        });
-        Ok(translation_attribute)
+        println!("[url2ref]   Proceeding with translation of: {}", content);
+        match translate(content, &options) {
+            Ok(text) => {
+                println!("[url2ref]   Translation successful: {}", text);
+                let translation_attribute = Attribute::TranslatedTitle(Translation {
+                    text,
+                    // We can safely unwrap here as the call to translate()
+                    // would've already failed if no target language was provided.
+                    language: options.target.clone().unwrap(),
+                });
+                Ok(translation_attribute)
+            }
+            Err(e) => {
+                eprintln!("[url2ref]   Translation FAILED: {:?}", e);
+                Err(e)
+            }
+        }
     } else {
+        eprintln!("[url2ref]   No title attribute to translate");
         Err(ReferenceGenerationError::TranslationError)
     }
 }
 
 /// Translates content according to the provided TranslationOptions.
+/// Dispatches to the appropriate translation provider based on options.
 fn translate<'a>(content: &'a str, options: &TranslationOptions) -> GenerationResult<String> {
+    println!("[url2ref] translate() called with provider: {:?}", options.provider);
+    
+    let target_lang = match options.target.clone() {
+        Some(lang) => {
+            println!("[url2ref]   target_lang: {}", lang);
+            lang
+        }
+        None => {
+            eprintln!("[url2ref]   ERROR: No target language specified!");
+            return Err(ReferenceGenerationError::TranslationError);
+        }
+    };
+
+    match options.provider {
+        TranslationProvider::DeepL => {
+            println!("[url2ref]   Using DeepL provider");
+            translate_with_deepl(content, options, &target_lang)
+        }
+        TranslationProvider::Google => {
+            println!("[url2ref]   Using Google provider");
+            translate_with_google(content, options, &target_lang)
+        }
+    }
+}
+
+/// Translates content using the DeepL API.
+fn translate_with_deepl(content: &str, options: &TranslationOptions, target_lang: &str) -> GenerationResult<String> {
     let api_key = options.deepl_key.clone().ok_or(ReferenceGenerationError::TranslationError)?;
     let deepl = DeepL::new(api_key);
 
     let texts = TranslatableTextList {
         source_language: options.source.clone(),
-        target_language: options
-            .target
-            .clone()
-            .ok_or(ReferenceGenerationError::TranslationError)?,
+        target_language: target_lang.to_string(),
         texts: vec![content.to_string()],
     };
 
     let translated = deepl.translate(None, texts)?;
-    Ok(translated[0].text.to_owned())
+    let text = &translated[0].text;
+    // Decode any HTML entities that might be present
+    Ok(decode_html(text).unwrap_or_else(|_| text.to_owned()))
+}
+
+/// Response structure for Google Cloud Translation API v2.
+#[derive(Debug, Deserialize)]
+struct GoogleTranslateResponse {
+    data: GoogleTranslateData,
+}
+
+#[derive(Debug, Deserialize)]
+struct GoogleTranslateData {
+    translations: Vec<GoogleTranslation>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GoogleTranslation {
+    #[serde(rename = "translatedText")]
+    translated_text: String,
+}
+
+/// Translates content using the Google Cloud Translation API v2.
+fn translate_with_google(content: &str, options: &TranslationOptions, target_lang: &str) -> GenerationResult<String> {
+    println!("[url2ref] translate_with_google() called");
+    
+    let api_key = match options.google_key.clone() {
+        Some(key) => {
+            println!("[url2ref]   Google API key found ({} chars)", key.len());
+            key
+        }
+        None => {
+            eprintln!("[url2ref]   ERROR: Google API key is NOT SET!");
+            return Err(ReferenceGenerationError::TranslationError);
+        }
+    };
+    
+    // Build the API URL with query parameters
+    let encoded_text = urlencoding::encode(content);
+    let mut url = format!(
+        "https://translation.googleapis.com/language/translate/v2?key={}&q={}&target={}",
+        api_key, encoded_text, target_lang.to_lowercase()
+    );
+    
+    // Add source language if specified
+    if let Some(ref source_lang) = options.source {
+        url.push_str(&format!("&source={}", source_lang.to_lowercase()));
+    }
+
+    println!("[url2ref]   Making request to Google Translate API (key redacted in URL)");
+    println!("[url2ref]   Target language: {}", target_lang);
+
+    // Make the API request
+    let response_str = match curl::get(&url, None, false) {
+        Ok(resp) => {
+            println!("[url2ref]   API response received ({} bytes)", resp.len());
+            println!("[url2ref]   Response: {}", &resp[..resp.len().min(500)]);
+            resp
+        }
+        Err(e) => {
+            eprintln!("[url2ref]   ERROR: curl request failed: {:?}", e);
+            return Err(ReferenceGenerationError::CurlError(e));
+        }
+    };
+    
+    // Parse the JSON response
+    let response: GoogleTranslateResponse = match serde_json::from_str(&response_str) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("[url2ref]   ERROR: Failed to parse JSON response: {:?}", e);
+            eprintln!("[url2ref]   Raw response: {}", response_str);
+            return Err(ReferenceGenerationError::TranslationError);
+        }
+    };
+    
+    // Extract the translated text
+    match response.data.translations.first() {
+        Some(t) => {
+            // Google Translate API returns HTML-encoded text, so we need to decode it
+            let decoded_text = decode_html(&t.translated_text)
+                .unwrap_or_else(|_| t.translated_text.clone());
+            println!("[url2ref]   Translation result: {}", decoded_text);
+            Ok(decoded_text)
+        }
+        None => {
+            eprintln!("[url2ref]   ERROR: No translations in response");
+            Err(ReferenceGenerationError::TranslationError)
+        }
+    }
 }
 
 /// Struct denoting a snapshot returned by the Wayback Machine API.
@@ -320,6 +547,7 @@ struct WaybackSnapshot {
 
 /// Attempt to fetch archive information from the Wayback Machine and
 /// construct an archive URL and date.
+/// If no archive exists and `perform_archival` is true, attempt to create one.
 fn fetch_archive_info(url: &Option<Attribute>, options: &ArchiveOptions) -> (Option<Attribute>, Option<Attribute>) {
     if !options.include_archived {
         return (None, None)
@@ -327,7 +555,18 @@ fn fetch_archive_info(url: &Option<Attribute>, options: &ArchiveOptions) -> (Opt
 
     // If URL specified, attempt to fetch archived URL.
     if let Some(Attribute::Url(url_str)) = url {
+        // First, try to get an existing archive
         let wayback_snapshot = call_wayback_api(url_str, &None).ok();
+
+        // If no archive exists and perform_archival is enabled, try to create one
+        let wayback_snapshot = match wayback_snapshot {
+            Some(snapshot) => Some(snapshot),
+            None if options.perform_archival => {
+                // Try to save the page to the Wayback Machine
+                save_to_wayback(url_str).ok()
+            }
+            None => None,
+        };
 
         let url_attribute  = wayback_snapshot.as_ref().map(|snapshot| Attribute::ArchiveUrl(snapshot.url.clone()));
         let date_attribute = wayback_snapshot.as_ref().map(|snapshot| {
@@ -344,15 +583,71 @@ fn fetch_archive_info(url: &Option<Attribute>, options: &ArchiveOptions) -> (Opt
     (None, None)
 }
 
+/// Save a URL to the Wayback Machine using the Save Page Now (SPN) API.
+/// Returns a WaybackSnapshot if successful.
+fn save_to_wayback(url: &str) -> Result<WaybackSnapshot, ArchiveError> {
+    // Use the Wayback Machine's Save Page Now endpoint
+    let save_url = format!("https://web.archive.org/save/{}", url);
+    
+    // Make a request to save the page - capture the redirect Location header
+    // The response will be a 302 redirect to the archived page
+    let location = curl::get_redirect_location(&save_url)?;
+    
+    // Parse the archive URL and timestamp from the Location header
+    // Format: https://web.archive.org/web/20260124121505/https://example.com/...
+    if let Some(timestamp) = parse_wayback_location(&location) {
+        Ok(WaybackSnapshot {
+            _status: "200".to_string(),
+            _available: true,
+            url: location,
+            timestamp,
+        })
+    } else {
+        // Fallback: query the API to get the snapshot info
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        call_wayback_api(url, &None)
+    }
+}
+
+/// Parse a Wayback Machine archive URL to extract the timestamp.
+/// Expected format: https://web.archive.org/web/TIMESTAMP/original_url
+fn parse_wayback_location(location: &str) -> Option<String> {
+    // Look for the pattern /web/TIMESTAMP/ where TIMESTAMP is 14 digits
+    let parts: Vec<&str> = location.split("/web/").collect();
+    if parts.len() >= 2 {
+        // Get the part after /web/ and extract the timestamp (first 14 chars or until /)
+        let after_web = parts[1];
+        let timestamp: String = after_web.chars().take_while(|c| c.is_ascii_digit()).collect();
+        if timestamp.len() == 14 {
+            return Some(timestamp);
+        }
+    }
+    None
+}
+
 /// Send a query for a URL to the Wayback Machine API and return the closest snapshot.
 fn call_wayback_api(url: &str, timestamp_option: &Option<&str>) -> Result<WaybackSnapshot, ArchiveError> {
-    // If timestamp provided, fetch the archived URL closest to the timestamp.
-    let timestamp = timestamp_option.unwrap_or_default();
-    let request_url = format!("http://archive.org/wayback/available?url={url}&timestamp={timestamp}");
+    // URL-encode the URL for the query parameter (handles special chars like ø → %C3%B8)
+    let encoded_url = urlencoding::encode(url);
+    
+    // Build the request URL, only including timestamp if provided
+    let request_url = match timestamp_option {
+        Some(ts) if !ts.is_empty() => format!("https://archive.org/wayback/available?url={encoded_url}&timestamp={ts}"),
+        _ => format!("https://archive.org/wayback/available?url={encoded_url}"),
+    };
+    
     let response = curl::get(&request_url, None, false)?;
     
     // Extract snapshot information for the closest retrieved snapshot.
-    let snapshot_info = &serde_json::from_str::<Value>(&response)?["archived_snapshots"]["closest"];
+    let json_value = serde_json::from_str::<Value>(&response)?;
+    let snapshot_info = &json_value["archived_snapshots"]["closest"];
+    
+    // Check if closest snapshot exists (not null)
+    if snapshot_info.is_null() {
+        return Err(ArchiveError::DeserializeError(
+            serde_json::from_str::<WaybackSnapshot>("{}").unwrap_err()
+        ));
+    }
 
     // Attempt to deserialize the snapshot information to a [`WaybackSnapshot`] struct.
     serde_json::from_value(snapshot_info.clone())
@@ -393,7 +688,7 @@ mod test {
     // this test must be changed to match.
     #[test]
     fn test_attribute_config_default() {
-        let expected = vec![MetadataType::OpenGraph, MetadataType::SchemaOrg];
+        let expected = vec![MetadataType::OpenGraph, MetadataType::SchemaOrg, MetadataType::HtmlMeta];
         let config = AttributeConfig::default();
         let result = config.parsers_used();
 
@@ -407,13 +702,18 @@ mod test {
         let url_attribute = Some(Attribute::Url(url.to_string()));
         let archive_options = ArchiveOptions::default();
         
-        // Timestamp is difficult to test for, so it is not needed for now.
+        // Fetch archive info - we just verify we get an archive URL, not a specific one
+        // since the Wayback Machine may have newer snapshots
         let (url_result, _) = fetch_archive_info(&url_attribute, &archive_options);
         
-        let expected_archive_url = "http://web.archive.org/web/20211026003805/https://www.information.dk/kultur/2018/01/casper-mandrilaftalen-burde-lade-goere-gjorde";
-        let expected_archive_url_attribute = Some(Attribute::ArchiveUrl(expected_archive_url.to_string()));
-        
-        assert_eq!(url_result, expected_archive_url_attribute);
+        // Verify we got an archive URL that contains the expected base pattern
+        assert!(url_result.is_some());
+        if let Some(Attribute::ArchiveUrl(archive_url)) = url_result {
+            assert!(archive_url.starts_with("http://web.archive.org/web/"));
+            assert!(archive_url.contains("information.dk/kultur/2018/01/casper-mandrilaftalen"));
+        } else {
+            panic!("Expected ArchiveUrl attribute");
+        }
     }
 
     #[test]

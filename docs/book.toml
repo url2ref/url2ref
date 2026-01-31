@@ -1,0 +1,25 @@
+[book]
+authors = ["url2ref contributors"]
+language = "en"
+src = "src"
+title = "url2ref Documentation"
+description = "Automatic reference generation for web resources"
+
+[build]
+build-dir = "book"
+
+[output.html]
+default-theme = "rust"
+preferred-dark-theme = "ayu"
+git-repository-url = "https://github.com/url2ref/url2ref"
+edit-url-template = "https://github.com/url2ref/url2ref/edit/main/docs/{path}"
+additional-css = ["theme/custom.css"]
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.search]
+enable = true
+limit-results = 30
+teaser-word-count = 30

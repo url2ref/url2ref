@@ -1,7 +1,256 @@
 {% extends "layout" %}
 
 {% block content %}
-<div class="pb-4">
-  <p>Hello, world!</p>
+<div class="pb-2">
+  <!-- URL Input Section -->
+  <div class="row justify-content-center mt-2">
+    <div class="col-md-8 col-lg-6">
+      <div class="input-group">
+        <input 
+          type="url" 
+          class="form-control form-control-lg" 
+          id="url-input" 
+          placeholder="Enter a URL (e.g., https://example.com/article)"
+          aria-label="URL input"
+        >
+        <button class="btn btn-primary btn-lg" type="button" id="generate-btn">
+          <span id="btn-text">Generate</span>
+          <span id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+        </button>
+      </div>
+      <div class="form-text text-center mt-2">
+        Paste a URL to generate a citation reference
+      </div>
+      <!-- Generation Options Toggle -->
+      <div class="text-center mt-2">
+        <a class="btn btn-link btn-sm text-muted text-decoration-none" data-bs-toggle="collapse" href="#generation-options" role="button" aria-expanded="false" aria-controls="generation-options">
+          <i class="bi bi-gear me-1"></i>Generation Options <i class="bi bi-chevron-down"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generation Options (Collapsed by default) - Full width to match other sections -->
+  <div class="row justify-content-center">
+    <div class="col-md-10 col-lg-8">
+      <div class="collapse mt-2" id="generation-options">
+        <div class="card card-body bg-dark border-secondary">
+          <!-- Metadata Sources -->
+          <div class="mb-3">
+            <label class="form-label text-muted mb-2"><i class="bi bi-database me-1"></i>Metadata Sources</label>
+            <div class="d-flex flex-wrap gap-3 justify-content-center">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="meta-opengraph" checked>
+                <label class="form-check-label" for="meta-opengraph">Open Graph</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="meta-schemaorg" checked>
+                <label class="form-check-label" for="meta-schemaorg">Schema.org</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="meta-htmlmeta" checked>
+                <label class="form-check-label" for="meta-htmlmeta">HTML Meta</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="meta-doi" checked>
+                <label class="form-check-label" for="meta-doi">DOI</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="meta-zotero">
+                <label class="form-check-label" for="meta-zotero" title="Uses Wikipedia's Citoid API for additional metadata">Zotero</label>
+              </div>
+            </div>
+          </div>
+          <hr class="border-secondary my-2">
+          <!-- Translation Options -->
+          <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+            <label for="target-lang-input" class="form-label mb-0 text-muted text-nowrap">
+              <i class="bi bi-translate me-1"></i>Translate title to:
+            </label>
+            <input type="text" class="form-control form-control-sm" id="target-lang-input" placeholder="e.g., EN, English, Deutsch" style="width: 180px;" list="language-suggestions" autocomplete="off">
+            <datalist id="language-suggestions"></datalist>
+            <label for="translation-provider" class="form-label mb-0 text-muted text-nowrap">
+              using:
+            </label>
+            <select class="form-select form-select-sm" id="translation-provider" style="width: auto;">
+              <option value="google">Google Translate</option>
+              <option value="deepl">DeepL</option>
+            </select>
+          </div>
+          <hr class="border-secondary my-2">
+          <!-- AI Extraction Options -->
+          <div class="d-flex align-items-center justify-content-center gap-2 flex-wrap">
+            <div class="form-check form-check-inline mb-0">
+              <input class="form-check-input" type="checkbox" id="ai-enabled">
+              <label class="form-check-label text-muted" for="ai-enabled">
+                <i class="bi bi-stars me-1"></i>AI extraction (fallback)
+              </label>
+            </div>
+            <select class="form-select form-select-sm" id="ai-provider" style="width: auto;" disabled>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+            </select>
+            <input type="password" class="form-control form-control-sm" id="ai-api-key" placeholder="API Key" style="width: 150px;" disabled>
+            <input type="text" class="form-control form-control-sm" id="ai-model" placeholder="Model (optional)" style="width: 140px;" disabled>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  <div class="row justify-content-center mt-3">
+    <div class="col-md-8 col-lg-6">
+      <div class="alert alert-danger d-none" id="error-alert" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span id="error-message"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results Section -->
+  <div class="row justify-content-center mt-3 d-none" id="results-section">
+    <div class="col-md-10 col-lg-8">
+      <div class="card bg-dark border-secondary results-card">
+        <div class="card-header">
+          <ul class="nav nav-tabs card-header-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="bibtex-tab" data-bs-toggle="tab" data-bs-target="#bibtex-panel" type="button" role="tab" aria-controls="bibtex-panel" aria-selected="true">
+                BibTeX
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="wiki-tab" data-bs-toggle="tab" data-bs-target="#wiki-panel" type="button" role="tab" aria-controls="wiki-panel" aria-selected="false">
+                Wiki
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="harvard-tab" data-bs-toggle="tab" data-bs-target="#harvard-panel" type="button" role="tab" aria-controls="harvard-panel" aria-selected="false">
+                Harvard
+              </button>
+            </li>
+          </ul>
+        </div>
+        <div class="card-body">
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="bibtex-panel" role="tabpanel" aria-labelledby="bibtex-tab">
+              <div class="position-relative citation-container">
+                <pre class="bg-black p-3 rounded mb-0 citation-pre"><code id="bibtex-output" class="text-light"></code></pre>
+                <!-- Loading skeleton -->
+                <div class="citation-skeleton" id="bibtex-skeleton">
+                  <div class="skeleton-line skeleton-short"></div>
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line skeleton-medium"></div>
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line skeleton-short"></div>
+                  <div class="skeleton-line skeleton-medium"></div>
+                  <div class="skeleton-line skeleton-short"></div>
+                </div>
+                <button class="btn btn-secondary btn-sm position-absolute top-0 end-0 m-2 copy-btn" data-target="bibtex-output" data-bs-toggle="tooltip" title="Copy to clipboard">
+                  <i class="bi bi-clipboard"></i> Copy
+                </button>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="wiki-panel" role="tabpanel" aria-labelledby="wiki-tab">
+              <div class="position-relative citation-container">
+                <pre class="bg-black p-3 rounded mb-0 citation-pre"><code id="wiki-output" class="text-light"></code></pre>
+                <!-- Loading skeleton -->
+                <div class="citation-skeleton" id="wiki-skeleton">
+                  <div class="skeleton-line skeleton-short"></div>
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line skeleton-medium"></div>
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line skeleton-short"></div>
+                  <div class="skeleton-line skeleton-medium"></div>
+                  <div class="skeleton-line skeleton-short"></div>
+                </div>
+                <button class="btn btn-secondary btn-sm position-absolute top-0 end-0 m-2 copy-btn" data-target="wiki-output" data-bs-toggle="tooltip" title="Copy to clipboard">
+                  <i class="bi bi-clipboard"></i> Copy
+                </button>
+              </div>
+              <!-- Formatting Settings (Collapsed) -->
+              <div class="mt-2">
+                <a class="btn btn-link btn-sm text-muted text-decoration-none p-0" data-bs-toggle="collapse" href="#wiki-format-options" role="button" aria-expanded="false" aria-controls="wiki-format-options">
+                  <i class="bi bi-gear me-1"></i>Formatting <i class="bi bi-chevron-down"></i>
+                </a>
+                <div class="collapse mt-2" id="wiki-format-options">
+                  <div class="card card-body bg-dark border-secondary py-2 px-3">
+                    <div class="d-flex align-items-center gap-3">
+                      <span class="text-muted small">Layout:</span>
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="wiki-format" id="wiki-format-multiline" value="multiline" checked>
+                        <label class="form-check-label small" for="wiki-format-multiline">Multi-line</label>
+                      </div>
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="wiki-format" id="wiki-format-singleline" value="singleline">
+                        <label class="form-check-label small" for="wiki-format-singleline">Single-line</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="tab-pane fade" id="harvard-panel" role="tabpanel" aria-labelledby="harvard-tab">
+              <div class="position-relative citation-container">
+                <pre class="bg-black p-3 rounded mb-0 citation-pre"><code id="harvard-output" class="text-light"></code></pre>
+                <!-- Loading skeleton -->
+                <div class="citation-skeleton" id="harvard-skeleton">
+                  <div class="skeleton-line"></div>
+                  <div class="skeleton-line skeleton-medium"></div>
+                </div>
+                <button class="btn btn-secondary btn-sm position-absolute top-0 end-0 m-2 copy-btn" data-target="harvard-output" data-bs-toggle="tooltip" title="Copy to clipboard">
+                  <i class="bi bi-clipboard"></i> Copy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reference Details Section (Compact View) -->
+  <div class="row justify-content-center mt-3 d-none" id="details-section">
+    <div class="col-md-10 col-lg-8">
+      <div class="card bg-dark border-secondary mb-3 details-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <a class="text-decoration-none text-reset d-flex align-items-center" data-bs-toggle="collapse" href="#details-collapse" role="button" aria-expanded="false" aria-controls="details-collapse">
+            <i class="bi bi-chevron-right me-2 collapse-icon"></i>
+            <span><i class="bi bi-list-ul me-2"></i>Extracted Reference Details</span>
+          </a>
+          <small class="text-muted">Click the source badge to see alternatives</small>
+        </div>
+        <div class="collapse" id="details-collapse">
+          <div class="card-body p-0">
+            <div id="metadata-fields">
+              <!-- Field rows will be populated dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Source Selection Modal (slides in from right) -->
+  <div class="source-modal-overlay d-none" id="source-modal-overlay">
+    <div class="source-modal" id="source-modal">
+      <div class="source-modal-header">
+        <h6 class="mb-0"><i class="bi bi-collection me-2"></i>Select Value for <span id="modal-field-name"></span></h6>
+        <button type="button" class="btn-close btn-close-white" id="modal-close-btn" aria-label="Close"></button>
+      </div>
+      <div class="source-modal-body" id="source-modal-body">
+        <!-- Source options will be populated dynamically -->
+      </div>
+      <div class="source-modal-footer">
+        <div class="custom-value-section">
+          <label class="form-label text-muted small mb-1">Or enter a custom value:</label>
+          <div class="input-group input-group-sm">
+            <input type="text" class="form-control" id="modal-custom-input" placeholder="Enter custom value...">
+            <button class="btn btn-primary" type="button" id="modal-custom-apply">Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock content %}
