@@ -305,7 +305,7 @@ fn not_found() -> Redirect {
     Redirect::to(uri!(home))
 }
 
-#[get("/")]
+#[get("/", rank = 3)]
 fn home() -> Template {
     let context = Context::new().into_json();
     Template::render("home", &context)
@@ -650,7 +650,7 @@ async fn docs_index(_host: DocsHost) -> Option<NamedFile> {
 }
 
 /// Serve docs static files
-#[get("/<path..>", rank = 1)]
+#[get("/<path..>", rank = 2)]
 async fn docs_files(_host: DocsHost, path: PathBuf) -> Option<NamedFile> {
     let docs_path = Path::new("../docs/book").join(&path);
     
@@ -662,6 +662,12 @@ async fn docs_files(_host: DocsHost, path: PathBuf) -> Option<NamedFile> {
     // If it's a directory, try index.html
     let index_path = docs_path.join("index.html");
     NamedFile::open(index_path).await.ok()
+}
+
+/// Serve favicon.ico from static directory
+#[get("/favicon.ico", rank = 0)]
+async fn favicon() -> Option<NamedFile> {
+    NamedFile::open("./static/custom/favicon.ico").await.ok()
 }
 
 #[launch]
@@ -680,7 +686,7 @@ fn rocket() -> _ {
     log_api_key_status();
 
     rocket::build()
-        .mount("/", routes![docs_index, docs_files, home, generate_reference, create_archive, fetch_multi_source])
+        .mount("/", routes![favicon, docs_index, docs_files, home, generate_reference, create_archive, fetch_multi_source])
         .mount("/static", FileServer::from("./static"))
         .attach(Template::fairing())
         .register("/", catchers![not_found])
