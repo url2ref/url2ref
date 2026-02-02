@@ -11,7 +11,7 @@ keywords = ["semantic web", "reference generation"]
 description = "Generate a reference from a web address"
 
 [dependencies]
-biblatex = "0.9.1"
+biblatex = "0.11.0"
 chrono = "0.4.31"
 curl = "0.4.44"
 deepl-api = "0.4.3"
