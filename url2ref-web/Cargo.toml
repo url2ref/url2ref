@@ -18,5 +18,5 @@ rocket = { version = "0.5.0", features = ["json"] }
 rocket_dyn_templates = { version = "0.1.0", features = ["tera"] }
 serde = { version = "1.0", features = ["derive"] }
 tera = "1.19.1"
-thiserror = "1.0.50"
+thiserror = "2.0.18"
 toml = "0.8"
