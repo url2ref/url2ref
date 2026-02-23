@@ -22,7 +22,7 @@ scraper = "0.18"
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
 serde_yaml = "0.9.27"
-strum = { version = "0.26", features = ["derive"] }
+strum = { version = "0.28", features = ["derive"] }
 thiserror = "1.0.50"
 urlencoding = "2.1"
 webpage = "2.0.0"
